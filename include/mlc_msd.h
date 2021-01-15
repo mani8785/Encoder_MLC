@@ -1,104 +1,123 @@
 #ifndef MLCMSD_H_
 #define MLCMSD_H_
 
+#include <iostream>
 #include <sstream>
 #include <itpp/itcomm.h>
 #include <itpp/stat/misc_stat.h>
+#include <itpp/itbase.h>
 
+#include "H5Cpp.h"
 
 using namespace std;
 using namespace itpp;
+using namespace H5;
 
-
-
-
-struct QUANTIZER_INFO{
-    /*
-    bits2sym : the mapping symbols for modulator.
-    m  : number of bits per symbol,  
-    Mm : modulation order
-    sym: The constellation points. Used as a quantization levels
-    levels: used for the quantizer
-    dx : quantizer step size,
-    */
-    int m = 6;
-    int Mm = 1<<m;
-    double Qrange = 3.0; // 6.0;
-    double dx = 2.0*Qrange/(Mm-2.0);
-    vec sym = linspace(-Qrange, Qrange, Mm); 
-    // ivec bits2sym = "0:1:15";  // binarry  mapping m = 4
-    ivec bits2sym = "0:1:63";  // binarry  mapping 
-    vec levels = sym;
-};
-
-struct LEVEL_INFO{
+struct LEVEL_INFO
+{
     /* 
      fl : frame length, 
      pl : parity length,  
      kl : information length, 
      idl: input_data_length,  
     */
-   int fl, pl, kl, idl;
-   LDPC_Code *my_ldpc;
-   vec softbits;
-   string peg_file_name;
-   int level_no;
-   double level_code_rate;
+    int fl, pl, kl;
+    LDPC_Code *my_ldpc;
+    vec softbits;
+    string peg_file_name;
+    int level_no;
+    double level_code_rate;
 };
 
+class MLCMSD
+{
+private:
+    int NoLs = 6;               // num_levels = 6;
+    int NoLiU = 3;              // number_of_levels_in_use = 3;
+    int CFL = 1000;             // common_frame_length;
+    bvec EncPattern = "111000"; // if 0 then no decoding and just plaintext are sent
 
-
-
-class MLCMSD{
-    private:
-        int number_of_levels_in_use;
-        int common_frame_length;
-
-    public:
-        MLCMSD(){
+public:
+    MLCMSD()
+    {
         // constructor
     }
 
-        ~MLCMSD(){
+    ~MLCMSD()
+    {
         // destructor
     }
+    /*
+        MLC environment
+        Set methods
+    */
+    void set_total_num_levels(int NoLs_val);
+    void set_num_level_in_use(int NoLiU_val);
+    void set_common_frame_length(int CFL_val);
+    void set_enc_pattern(bvec Enc_pattern_val);
 
-        void set_num_level_in_use(int num_lev);
+    /*
+        MLC environment
+        Get methods
+    */
+    int get_num_level_in_use() { return NoLiU; };
 
-        void set_common_frame_length(int fl);
+    int get_common_frame_length() { return CFL; };
 
-        int get_num_level_in_use(){return number_of_levels_in_use; };
+    /*
+        MLC environment
+        Check methods
+    */
+    void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
 
-        int get_common_frame_length(){return common_frame_length; };
+    void initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
-        void check_structure(const LEVEL_INFO * info_level1, const LEVEL_INFO * info_level2, const LEVEL_INFO * info_level3);
+    void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
-        void initialize_struct(LEVEL_INFO * info_level, LDPC_Code * ldpc_in, int level_no, int leng, string h_name);
+    /*
+        Methods related to the loading of LDPC codes
+    */
+    int check_the_encoder_file_format(string code_name);
 
-        void update_level_info(LEVEL_INFO * info_level, LDPC_Code * ldpc_in, int level_no, int leng, string h_name);
+    void load_peg(string input_peg, int *ROW, int *COL, int *Z_size, imat *base_matrix);
 
-        int check_the_input_type(string code_name);
+    LDPC_Code fill_ldpc(string code_name);
 
-        void load_peg(string input_peg, int* ROW, int* COL, int* Z_size, imat * base_matrix);
+    /*
+        Display methods
+    */
+    void display_level(LEVEL_INFO *info_level, bool short_info);
+    void display_table_title();
 
-        LDPC_Code fill_ldpc(string code_name);
+    /*
+        Encoding methods 
+        Applied to each frame
+    */
+    void encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, bvec *enc_data_hard);
+    void encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, bvec *enc_data_hard_1, bvec *enc_data_hard_2);
+    void encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3);
 
-        void load_test_data(string data_name, int* len_data, vec * XA, vec * XB);
+    /*
+        Read and write from/to h5 files for data
+    */
+    void load_test_data(string data_name, int *len_data, vec *XA, vec *XB);
 
-        void display_quant(QUANTIZER_INFO * info_adc);
-        void display_level(LEVEL_INFO * info_level, bool short_info);
-        void display_table_title();
+    /*
+        read and write from/to files frame by frame
+    */
+    void get_dataset_info(string Fname, string Dname, H5T_class_t &Ctype, int &Rank, hsize_t Dims[], size_t &type_size, bool Disp_flag);
+    void get_dataset_info(string Fname, string Dname, int &Rank, hsize_t Dims[], H5std_string &my_dtype, bool Disp_flag);
+    void reshape_h5(string FnameInp, string Dnames[], int numdatasets, string FnameOut);
 
-        // ======================== One levels
-        void encoder_one_level(const bmat * qxB_bin, const LEVEL_INFO * info_level, const QUANTIZER_INFO * info_adc, bmat * plain_texts, bvec * enc_data_hard);
+    void read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, ivec &data_read);
+    void read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, vec &data_read);
+    void read_subset_of_1D_dataset_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, ivec &data_read);
+    void read_subset_of_1D_dataset_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, vec &data_read);
 
-        // ========================= Two levels
-        void encoder_two_levels(const bmat * qxB_bin, const LEVEL_INFO * info_level1, const LEVEL_INFO * info_level2, const QUANTIZER_INFO * info_adc, bmat * plain_texts_two_levels, bvec * enc_data_hard_1, bvec * enc_data_hard_2);
-        
-        // ========================= Three levels
-        void encoder_three_levels(const bmat * qxB_bin, const LEVEL_INFO * info_level1, const LEVEL_INFO * info_level2, const LEVEL_INFO * info_level3, const QUANTIZER_INFO * info_adc, bmat * plain_texts_LSBs, bvec * enc_data_hard_1, bvec * enc_data_hard_2, bvec * enc_data_hard_3);
+    void add_dataset(H5File &hdf5file, string DATASET_NAME, PredType pre_def_type, hsize_t FSPACE_RANK, hsize_t Dims[], DataSpace &fspace, DataSet &dataset);
 
+    void write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, vec &ith_frame_Tx);
+    void write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, ivec &ith_frame_Tx);
 };
-
 
 #endif /* class MLCMSD */

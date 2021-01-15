@@ -1,16 +1,63 @@
 #include <sstream>
 #include "mlc_msd.h"
 
-void MLCMSD::set_num_level_in_use(int num_lev)
+
+void MLCMSD::set_total_num_levels(int NoLs_val)
 {
-    number_of_levels_in_use = num_lev;
+    /*
+        Set the total number of levels
+    */
+    NoLs = NoLs_val;
 };
 
-void MLCMSD::set_common_frame_length(int fl){
-    common_frame_length = fl;
+void MLCMSD::set_num_level_in_use(int NoLiU_val)
+{
+    /*
+        Set the number of levels used encoder for MLC-MSD
+    */
+    NoLiU = NoLiU_val;
 };
 
-int MLCMSD::check_the_input_type(string code_name)
+void MLCMSD::set_common_frame_length(int CFL_val)
+{
+    /*
+        Set the Common Frame Length (CFL) for all the codes.
+        It is actually the read size of our buffer
+    */
+    CFL = CFL_val;
+};
+
+void MLCMSD::set_enc_pattern(bvec Enc_pattern_val)
+{
+    /*
+        Set the encoding pattern.
+        111000
+    */
+    int total_num_levels = Enc_pattern_val.length();
+    if (NoLs != total_num_levels)
+    {
+        printf("Error Hint: The given pattern length is %d but should be %d", total_num_levels, NoLs);
+        it_error("The pattern length does not match");
+    }
+
+    ivec Enc_pattern_val_int = to_ivec(Enc_pattern_val);
+    if (sum(Enc_pattern_val_int) != NoLiU)
+    {
+        printf("Error Hint: Number of levels in use are %d but should be %d", sum(Enc_pattern_val_int), NoLiU);
+        it_error("The number of levels in use does not match");
+    }
+    int pattern_dec = bin2dec(Enc_pattern_val);
+    if (pattern_dec != 32 || pattern_dec != 48 || pattern_dec != 56)
+    {
+        printf("Error Hint: It is not a valid pattern. Valid patterns are (111000, 110000, 100000, )");
+        it_error("Wrong valid pattern");
+    }
+    
+    EncPattern = Enc_pattern_val;
+};
+
+
+int MLCMSD::check_the_encoder_file_format(string code_name)
 {
     /* Check the type of the codec input file
      0: *.it
@@ -35,7 +82,7 @@ int MLCMSD::check_the_input_type(string code_name)
         return 4;
 };
 
-void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, int leng, string h_name)
+void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
 {
     size_t found_type = h_name.find("skip");
     if (found_type != std::string::npos)
@@ -44,7 +91,6 @@ void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int l
         info_level->fl = 0.0;
         info_level->pl = 0.0;
         info_level->kl = 0.0;
-        info_level->idl = leng;
         info_level->peg_file_name = h_name;
         info_level->level_no = level_no;
         info_level->level_code_rate = 1.0;
@@ -55,14 +101,13 @@ void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int l
         info_level->fl = ldpc_in->get_nvar();
         info_level->pl = ldpc_in->get_ncheck();
         info_level->kl = info_level->fl - info_level->pl;
-        info_level->idl = leng;
         info_level->peg_file_name = h_name;
         info_level->level_no = level_no;
         info_level->level_code_rate = ldpc_in->get_rate();
     }
 }
 
-void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, int leng, string h_name)
+void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
 {
     size_t found_type = h_name.find("skip");
     if (found_type != std::string::npos)
@@ -71,7 +116,6 @@ void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int l
         info_level->fl = this->get_common_frame_length();
         info_level->pl = 0.0;
         info_level->kl = this->get_common_frame_length();
-        info_level->idl = leng;
         info_level->peg_file_name = h_name;
         info_level->level_no = level_no;
         info_level->level_code_rate = 1.0;
@@ -188,7 +232,7 @@ void MLCMSD::load_peg(string input_peg, int *ROW, int *COL, int *Z_size, imat *b
 LDPC_Code MLCMSD::fill_ldpc(string code_name)
 {
     LDPC_Code C; // empty constructor
-    int check_input_type = check_the_input_type(code_name);
+    int check_input_type = check_the_encoder_file_format(code_name);
 
     if (check_input_type == 0)
     {
@@ -243,6 +287,7 @@ void MLCMSD::load_test_data(string data_name, int *len_data, vec *XA, vec *XB)
     af >> Name("XBI") >> *XB;
     af >> Name("idl") >> *len_data;
 }
+
 void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3)
 {
     int nvar1 = info_level1->fl;
@@ -280,18 +325,8 @@ void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *in
     }
 }
 
-void MLCMSD::display_quant(QUANTIZER_INFO *info_adc)
-{
-    printf("# * Quantizerl info: \n");
-    printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d -- %8d\n# \t ** %8s\t= %8.3f -- %8.3f\n",
-           "Number of bits   ", info_adc->m,
-           "Output symbols   ", info_adc->bits2sym(0), info_adc->bits2sym(info_adc->Mm - 1),
-           "Quantizer Range  ", -info_adc->Qrange, info_adc->Qrange);
-}
-
 void MLCMSD::display_level(LEVEL_INFO *info_level, bool short_info)
 {
-    int number_of_frames = info_level->idl / info_level->fl + 1;
     string file_name = info_level->peg_file_name;
     if (short_info)
     {
@@ -321,12 +356,6 @@ void MLCMSD::display_level(LEVEL_INFO *info_level, bool short_info)
                "Channel Type ", "BI-AWGN",
                "Noise Type   ", "Eb/N0 (dB)",
                "Estimated Noise  ", "Unknown");
-        printf("# * Test Data info: \n");
-        printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n",
-               "Data length     ", info_level->idl,
-               "frame length    ", info_level->fl,
-               "frame number    ", number_of_frames);
-        printf("#\n# The simulation is running ...\n");
     }
 }
 
@@ -345,25 +374,21 @@ void MLCMSD::display_table_title()
 }
 
 // ==================== Enc/Dec for one level
-void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, const QUANTIZER_INFO *info_adc, bmat *plain_texts, bvec *enc_data_hard)
+void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, bvec *enc_data_hard)
 {
-    int fl = info_level->fl;
-    int m = info_adc->m;
     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
-    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
+    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
     if (info_level->pl > 0)
     {
         QLLRvec synd_llr_xB_5 = info_level->my_ldpc->soft_syndrome_check(sign_xB_5);
         *enc_data_hard = synd_llr_xB_5 > 0;
     }
-    *plain_texts = qxB_bin->get(0, fl - 1, 1, m - 1);
+    *plain_texts = qxB_bin->get(0, CFL - 1, 1, NoLs - 1);
 }
 
 // ==================== Enc/Dec for Two levels
-void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const QUANTIZER_INFO *info_adc, bmat *plain_texts_two_levels, bvec *enc_data_hard_1, bvec *enc_data_hard_2)
+void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, bvec *enc_data_hard_1, bvec *enc_data_hard_2)
 {
-    int fl = info_level1->fl;
-    int m = info_adc->m;
     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     bvec bin_xB_4 = qxB_bin->get_col(1);
     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
@@ -380,15 +405,13 @@ void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_leve
         *enc_data_hard_2 = synd_llr_xB_4 > 0;
     }
 
-    *plain_texts_two_levels = qxB_bin->get(0, fl - 1, 2, m - 1);
+    *plain_texts_two_levels = qxB_bin->get(0, CFL - 1, 2, NoLs - 1);
 }
 
 // ==================== Enc/Dec for Three levels
 
-void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, const QUANTIZER_INFO *info_adc, bmat *plain_texts_LSBs, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
+void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
 {
-    int fl = info_level1->fl;
-    int m = info_adc->m;
     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     bvec bin_xB_4 = qxB_bin->get_col(1);
     bvec bin_xB_3 = qxB_bin->get_col(2);
@@ -411,5 +434,1255 @@ void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_le
         QLLRvec synd_llr_xB_3 = info_level3->my_ldpc->soft_syndrome_check(sign_xB_3);
         *enc_data_hard_3 = synd_llr_xB_3 > 0;    
     }
-    *plain_texts_LSBs = qxB_bin->get(0, fl - 1, 3, m - 1);
+    *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
 }
+
+
+
+/*
+    read and write from/to files frame by frame
+*/
+
+void MLCMSD::get_dataset_info(string Fname, string Dname, H5T_class_t &Ctype, int &Rank, hsize_t Dims[], size_t &type_size, bool DispF)
+{
+    /*
+        Fname: File name: It could be the full address of the xxx.h5 
+        Dname: Dataset name: It should be a valid name
+        Ctype: H5 Class type: H5T_INTEGER, H5T_FLOAT, ... 
+        Dtype: Stored data type: NATIVE_INT, NATIVE_FLOAT, NATIVE_DOUBLE, .... 
+        Dims : Dimsnsions of the 2D data set
+        DispF: Display Flag
+    */
+    // if (DispF)
+    // {
+    //     printf("\e[1m");
+    //     printf("# %-58s \n", "================= Load Transmitter Data ");
+    //     printf("# %68s \n", "---------------------------------------------------------------------- ");
+    //     printf("# %16s | %16s | %16s | %16s \n", " H5 Class Type ", "Data Size (Byte)  ", "Rank  ", " Dimension  ");
+    //     printf("# %68s \n", "---------------------------------------------------------------------- ");
+    //     printf("\e[0m");
+    // }
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *dataset = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = dataset->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        int ndimsI = fspaceI.getSimpleExtentDims(Dims, NULL);
+        Rank = ndimsI;
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        Ctype = dataset->getTypeClass();
+        H5std_string order_string;
+        H5T_order_t order;
+        size_t size;
+
+        /*
+            * Get class of datatype and print message if it's an integer.
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            /*
+                * Get the float datatype
+            */
+            FloatType floatype = dataset->getFloatType();
+            /*
+                * Get order of datatype and print message if it's a little endian.
+            */
+            order = floatype.getOrder(order_string);
+            /*
+                * Get size of the data element stored in file and print it.
+            */
+            type_size = floatype.getSize();
+            // cout << "Data size is " << size << endl;
+            // if (DispF)
+            //     printf("# %-16s | %-16d \n", " FLOAT", (int)type_size);
+            
+            if (DispF)
+            {
+                printf("\e[1m");
+                printf("# --------------------------------------------------------\n");
+                printf("# -------------- %8s", "Tx data information \n");
+                printf("# --------------------------------------------------------\n");
+                printf("# * Dataset info: \n");
+                printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n",
+                    "H5 Class Type" , "FLOAT",
+                    "Data Size (Byte)" , (int) type_size,
+                    "Rank", Rank);
+                printf("# \n");
+                printf("\e[0m");
+            }
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+            IntType inttype = dataset->getIntType();
+            order = inttype.getOrder(order_string);
+            type_size = inttype.getSize();
+            // if (DispF)
+            //     printf("# %-16s | %-16d \n", " INTEGER", (int)type_size);
+            
+            if (DispF)
+            {
+                printf("\e[1m");
+                printf("# --------------------------------------------------------\n");
+                printf("# -------------- %8s", "Tx data information \n");
+                printf("# --------------------------------------------------------\n");
+                printf("# * Dataset info: \n");
+                printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n",
+                    "H5 Class Type" , "INTEGER",
+                    "Data Size (Byte)" , (int) type_size,
+                    "Rank", Rank);
+                printf("# \n");
+                printf("\e[0m");
+            }
+        }
+
+        
+        
+
+
+
+        delete dataset;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+
+void MLCMSD::get_dataset_info(string Fname, string Dname, int &Rank, hsize_t Dims[], H5std_string &my_dtype, bool DispF)
+{
+    /*
+        Fname: File name: It could be the full address of the xxx.h5 
+        Dname: Dataset name: It should be a valid name
+        Ctype: H5 Class type: H5T_INTEGER, H5T_FLOAT, ... 
+        Dtype: Stored data type: NATIVE_INT, NATIVE_FLOAT, NATIVE_DOUBLE, .... 
+        Dims : Dimsnsions of the 2D data set
+        DispF: Display Flag
+    */
+    // if (DispF)
+    // {
+    //     printf("\e[1m");
+    //     printf("# %-58s \n", "================= Load Transmitter Data   ");
+    //     printf("# %78s \n", "------------------------------------------------------------------------------- ");
+    //     printf("# %16s | %16s | %16s | %16s \n", " H5 Class Type ", "Data Size (Byte)", "Rank  ", " Dimension  ");
+    //     printf("# %-78s \n", "------------------------------------------------------------------------------ ");
+    //     printf("\e[0m");
+    // }
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *dataset = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = dataset->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        int ndimsI = fspaceI.getSimpleExtentDims(Dims, NULL);
+        Rank = ndimsI;
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        size_t type_size; 
+        H5T_class_t Ctype = dataset->getTypeClass();
+        H5std_string order_string;
+        H5T_order_t order;
+
+        /*
+            * Get class of datatype and print message if it's an integer.
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            /*
+                * Get the float datatype
+            */
+            FloatType floatype = dataset->getFloatType();
+            /*
+                * Get order of datatype and print message if it's a little endian.
+            */
+            order = floatype.getOrder(order_string);
+            /*
+                * Get size of the data element stored in file and print it.
+            */
+            type_size = floatype.getSize();
+            // cout << "Data size is " << size << endl;
+            if (type_size==4)
+            {
+                my_dtype = "float";
+            }else if (type_size == 8)
+            {
+                my_dtype = "double";
+            }
+            
+            
+            if (DispF)
+            {
+                if (Rank == 1)
+                {
+                    Dims[1] = 1;
+                    // printf("# %-16s | %-16d | %-16d | (%8d, %8d) \n", " FLOAT", (int)type_size, Rank, (int) Dims[0], 1);
+                    // printf("# %-78s \n", "------------------------------------------------------------------------------ ");
+
+
+                    printf("\e[1m");
+                    printf("# --------------------------------------------------------\n");
+                    printf("# -------------- %8s", "Tx data information \n");
+                    printf("# --------------------------------------------------------\n");
+                    printf("# * Dataset info: \n");
+                    printf("# \t ** %-16s\t= %8s\n# \t ** %-16s\t= %8d\n# \t ** %-16s\t= %8d\n# \t ** %-16s\t= (%-8d, %8d)\n",
+                        "H5 Class Type" , "FLOAT",
+                        "Data Size (Byte)" , (int) type_size,
+                        "Rank", Rank,
+                        "Dimension", (int) Dims[0], (int) Dims[1]);
+                    printf("# \n");
+                    printf("\e[0m");
+                } 
+                else if (Rank == 2)
+                {
+                    // printf("# %-16s | %-16d | %-16d | (%8d, %8d) \n", " FLOAT", (int)type_size, Rank, (int) Dims[0], (int) Dims[1]);
+                    // printf("# %-78s \n", "------------------------------------------------------------------------------ ");
+                    printf("\e[1m");
+                    printf("# --------------------------------------------------------\n");
+                    printf("# -------------- %8s", "Tx data information \n");
+                    printf("# --------------------------------------------------------\n");
+                    printf("# * Dataset info: \n");
+                    printf("# \t ** %-16s\t= %8s\n# \t ** %-16s\t= %8d\n# \t ** %-16s\t= %8d\n# \t ** %-16s\t= (%-8d, %8d)\n",
+                        "H5 Class Type" , "FLOAT",
+                        "Data Size (Byte)" , (int) type_size,
+                        "Rank", Rank,
+                        "Dimension", (int) Dims[0], (int) Dims[1]);
+                    printf("# \n");
+                    printf("\e[0m");
+                }
+                else
+                {
+                    it_error("only support 1D or 2D datasets");
+                }
+            }
+                
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+            IntType inttype = dataset->getIntType();
+            order = inttype.getOrder(order_string);
+            type_size = inttype.getSize();
+            if (type_size==4)
+            {
+                my_dtype = "int8";
+            }else if (type_size == 8)
+            {
+                my_dtype = "int16";
+            }
+
+            if (DispF)
+            {
+                if (Rank == 1)
+                {
+                    Dims[1] = 1;
+                    printf("# %-16s | %-16d | %-16d | (%8d, %8d) \n", " INTEGER", (int)type_size, Rank, (int) Dims[0], 1);
+                } 
+                else if (Rank == 2)
+                {
+                    printf("# %-16s | %-16d | %-16d | (%8d, %8d) \n", " INTEGER", (int)type_size, Rank, (int) Dims[0], (int) Dims[1]);
+                }
+                else
+                {
+                    it_error("only support 1D or 2D datasets");
+                }
+            }
+        }
+
+        delete dataset;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+
+void MLCMSD::reshape_h5(string FnameInp, string Dnames[], int numdatasets, string FnameOut)
+{
+    H5T_class_t Ctype; // class type
+    size_t size_type;  // size of the data in byte
+    hsize_t Dims[2];   // dataset dimensions
+    int Rank;
+    get_dataset_info(FnameInp, Dnames[0], Ctype, Rank, Dims, size_type, false);
+
+    // ToDo check that staructure of the two datasets are the same: Size and Format
+    if (Dims[1] >= 2)
+    {
+        /*
+        Create a *.h5 file to wtite the reshaped data in it
+        */
+        H5File file(FnameOut, H5F_ACC_TRUNC);
+        DataSpace fspace;
+        DataSet dataset;
+        DataSpace fspaceQ;
+        DataSet datasetQ;
+        hsize_t Total_lements[1];
+        Total_lements[0] = Dims[0] * Dims[1];
+
+        if (Ctype == H5T_FLOAT)
+        {
+            vec temp_col_vals;
+            temp_col_vals.set_length(Dims[0], false);
+            if (size_type == 4)
+            {
+                add_dataset(file, Dnames[0], PredType::IEEE_F32LE, 1, Total_lements, fspace, dataset);
+                for (size_t ifc = 0; ifc < Dims[1]; ifc++)
+                {
+                    read_col_i_from_h5(FnameInp, Dnames[0], Ctype, Dims[0], ifc, temp_col_vals);
+                    write_to_1D_dataset_ith_frame(dataset, fspace, PredType::IEEE_F32LE, Dims[0], ifc, temp_col_vals);
+
+                } // end of frames for TxI
+
+                add_dataset(file, Dnames[1], PredType::IEEE_F32LE, 1, Total_lements, fspaceQ, datasetQ);
+                for (size_t ifc = 0; ifc < Dims[1]; ifc++)
+                {
+                    read_col_i_from_h5(FnameInp, Dnames[1], Ctype, Dims[0], ifc, temp_col_vals);
+                    write_to_1D_dataset_ith_frame(datasetQ, fspaceQ, PredType::IEEE_F32LE, Dims[0], ifc, temp_col_vals);
+
+                } // end of frames forn TxQ
+            }
+            else if (size_type == 8)
+            {
+                add_dataset(file, Dnames[0], PredType::IEEE_F64LE, 1, Total_lements, fspace, dataset);
+                for (size_t ifc = 0; ifc < Dims[1]; ifc++)
+                {
+                    read_col_i_from_h5(FnameInp, Dnames[0], Ctype, Dims[0], ifc, temp_col_vals);
+                    write_to_1D_dataset_ith_frame(dataset, fspace, PredType::IEEE_F64LE, Dims[0], ifc, temp_col_vals);
+
+                } // end of frames for TxI
+
+                add_dataset(file, Dnames[1], PredType::IEEE_F64LE, 1, Total_lements, fspaceQ, datasetQ);
+                for (size_t ifc = 0; ifc < Dims[1]; ifc++)
+                {
+                    read_col_i_from_h5(FnameInp, Dnames[1], Ctype, Dims[0], ifc, temp_col_vals);
+                    write_to_1D_dataset_ith_frame(datasetQ, fspaceQ, PredType::IEEE_F64LE, Dims[0], ifc, temp_col_vals);
+
+                } // end of frames forn TxQ
+            }
+            else
+            {
+                it_error("Do not support float with this size");
+            }
+        }
+        else if (Ctype == H5T_INTEGER)
+        {
+            if (size_type == 1)
+            {
+                add_dataset(file, Dnames[0], PredType::STD_I8LE, 2, Total_lements, fspace, dataset);
+                add_dataset(file, Dnames[1], PredType::STD_I8LE, 2, Total_lements, fspaceQ, datasetQ);
+            }
+            else if (size_type == 2)
+            {
+                add_dataset(file, Dnames[0], PredType::STD_I16LE, 2, Total_lements, fspace, dataset);
+                add_dataset(file, Dnames[1], PredType::STD_I16LE, 2, Total_lements, fspaceQ, datasetQ);
+            }
+            else
+            {
+                it_error("Do not support integer with this size");
+            }
+        }
+        else
+        {
+            it_error("Do not support other formats (reshape func)");
+        }
+
+        /*
+     * Reset the selection for the file dataspace fid.
+     */
+        fspace.selectNone();
+    }
+    else
+    {
+        it_error("create a 1D copy is not possible.");
+    }
+};
+
+
+
+void MLCMSD::read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, ivec &data_read)
+{
+    /*
+        L is the half of the cw length
+    */
+    int i, j;
+    int TxI_buffer[Count]; /* output buffer */
+    for (j = 0; j < Count; j++)
+        TxI_buffer[j] = 0;
+
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *datasetI = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        H5T_class_t type_classI = datasetI->getTypeClass();
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = datasetI->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        hsize_t dims_outI[2];
+        int ndimsI = fspaceI.getSimpleExtentDims(dims_outI, NULL);
+
+        /*
+        * Create memory dataspace.
+    */
+        hsize_t mdim[] = {Count, 1}; /* Dimension sizes of the
+                                                   dataset in memory when we
+                                                   read selection from the
+                                                   dataset on the disk */
+        DataSpace mspaceI(2, mdim);
+        /*
+        * Select hyperslab in memory and file dataspace. Hyperslab has the same
+        * size and shape as the selected hyperslabs for the file dataspace.
+    */
+        hsize_t startm[2];  // Start of hyperslab
+        hsize_t stridem[2]; // Stride of hyperslab
+        hsize_t countm[2];  // Block count
+        hsize_t blockm[2];  // Block sizes
+        startm[0] = 0;
+        startm[1] = 0;
+        blockm[0] = 1;
+        blockm[1] = 1;
+        stridem[0] = 1;
+        stridem[1] = 1;
+        countm[0] = Count;
+        countm[1] = 1;
+
+        hsize_t start[2];  // Start of hyperslab
+        hsize_t stride[2]; // Stride of hyperslab
+        hsize_t count[2];  // Block count
+        hsize_t block[2];  // Block sizes
+        start[0] = 0;
+        block[0] = 1;
+        block[1] = 1;
+        stride[0] = 1;
+        stride[1] = 1;
+        count[0] = Count;
+        count[1] = 1;
+        /*
+            read col_i from Tx and Rx and combine them together in a vector (data_read)
+        */
+        if (col_i >= dims_outI[1])
+        {
+            it_error("The index is out of bound");
+        }
+        start[1] = col_i;
+        fspaceI.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        mspaceI.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+
+        /*
+            Read data back to the buffer
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            it_error("This is not integer fromat");
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+
+            IntType inttype = datasetI->getIntType();
+            size_t size = inttype.getSize();
+
+            if (size == 1)
+            {
+                datasetI->read(TxI_buffer, PredType::STD_I8LE, mspaceI, fspaceI);
+            }
+            else if (size == 2)
+            {
+                datasetI->read(TxI_buffer, PredType::STD_I16LE, mspaceI, fspaceI);
+            }
+            else
+            {
+                it_error("We do not supoort this data fromat");
+            }
+        }
+
+        data_read.set_length(Count, false);
+        for (j = 0; j < Count; j++)
+        {
+            // cout << "out_j = " << TxI_buffer[j] << endl;
+            data_read(j) = TxI_buffer[j];
+        }
+
+        delete datasetI;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+void MLCMSD::read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, vec &data_read)
+{
+    /*
+        L is the half of the cw length
+    */
+    int i, j;
+    double TxI_buffer[Count]; /* output buffer */
+    for (j = 0; j < Count; j++)
+        TxI_buffer[j] = 0;
+
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *datasetI = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        H5T_class_t type_classI = datasetI->getTypeClass();
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = datasetI->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        hsize_t dims_outI[2];
+        int ndimsI = fspaceI.getSimpleExtentDims(dims_outI, NULL);
+
+        /*
+        * Create memory dataspace.
+    */
+        hsize_t mdim[] = {Count, 1}; /* Dimension sizes of the
+                                                   dataset in memory when we
+                                                   read selection from the
+                                                   dataset on the disk */
+        DataSpace mspaceI(2, mdim);
+        /*
+        * Select hyperslab in memory and file dataspace. Hyperslab has the same
+        * size and shape as the selected hyperslabs for the file dataspace.
+    */
+        hsize_t startm[2];  // Start of hyperslab
+        hsize_t stridem[2]; // Stride of hyperslab
+        hsize_t countm[2];  // Block count
+        hsize_t blockm[2];  // Block sizes
+        startm[0] = 0;
+        startm[1] = 0;
+        blockm[0] = 1;
+        blockm[1] = 1;
+        stridem[0] = 1;
+        stridem[1] = 1;
+        countm[0] = Count;
+        countm[1] = 1;
+
+        hsize_t start[2];  // Start of hyperslab
+        hsize_t stride[2]; // Stride of hyperslab
+        hsize_t count[2];  // Block count
+        hsize_t block[2];  // Block sizes
+        start[0] = 0;
+        block[0] = 1;
+        block[1] = 1;
+        stride[0] = 1;
+        stride[1] = 1;
+        count[0] = Count;
+        count[1] = 1;
+        /*
+            read col_i from Tx and Rx and combine them together in a vector (data_read)
+        */
+        if (col_i >= dims_outI[1])
+        {
+            it_error("The index is out of bound");
+        }
+        start[1] = col_i;
+        fspaceI.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        mspaceI.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+
+        /*
+            Read data back to the buffer
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            FloatType floattype = datasetI->getFloatType();
+            size_t size = floattype.getSize();
+            if (size == 4)
+            {
+                datasetI->read(TxI_buffer, PredType::IEEE_F32LE, mspaceI, fspaceI);
+            }
+            else if (size == 8)
+            {
+                datasetI->read(TxI_buffer, PredType::IEEE_F64LE, mspaceI, fspaceI);
+            }
+            else
+            {
+                it_error("We do not supoort this data fromat for float");
+            }
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+            it_error("This is not float data type");
+        }
+
+        data_read.set_length(Count, false);
+        for (j = 0; j < Count; j++)
+            data_read(j) = TxI_buffer[j];
+
+        delete datasetI;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+void MLCMSD::read_subset_of_1D_dataset_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, ivec &data_read)
+{
+
+    hsize_t size;
+    /*
+        L is the half of the cw length
+    */
+    int i, j;
+    int8_t TxI_buffer[Count]; /* output buffer */
+    for (j = 0; j < Count; j++)
+    {
+        TxI_buffer[j] = 0;
+    }
+
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *datasetI = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        H5T_class_t type_classI = datasetI->getTypeClass();
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = datasetI->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+        if (rankI > 1)
+        {
+            it_error("This is a 2D data set!");
+        }
+
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        hsize_t dims_outI[1];
+        int ndimsI = fspaceI.getSimpleExtentDims(dims_outI, NULL);
+
+        /*
+        * Create memory dataspace.
+    */
+        hsize_t mdim[] = {Count}; /* Dimension sizes of the
+                                                   dataset in memory when we
+                                                   read selection from the
+                                                   dataset on the disk */
+        DataSpace mspaceI(1, mdim);
+        /*
+        * Select hyperslab in memory and file dataspace. Hyperslab has the same
+        * size and shape as the selected hyperslabs for the file dataspace.
+    */
+        hsize_t startm[1];  // Start of hyperslab
+        hsize_t stridem[1]; // Stride of hyperslab
+        hsize_t countm[1];  // Block count
+        hsize_t blockm[1];  // Block sizes
+        startm[0] = 0;
+        blockm[0] = 1;
+        stridem[0] = 1;
+        countm[0] = Count;
+
+        hsize_t start[1];  // Start of hyperslab
+        hsize_t stride[1]; // Stride of hyperslab
+        hsize_t count[1];  // Block count
+        hsize_t block[1];  // Block sizes
+        start[0] = 0;
+        block[0] = 1;
+        stride[0] = 1;
+        count[0] = Count; // dims_outI[0];
+        /*
+            read col_i from Tx and Rx and combine them together in a vector (data_read)
+        */
+
+        start[0] = col_i * Count;
+        fspaceI.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        mspaceI.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+        /*
+            Read data back to the buffer
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            it_error("This is not integer fromat");
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+
+            IntType inttype = datasetI->getIntType();
+            size = inttype.getSize();
+
+            if (size == 1)
+            {
+                datasetI->read(TxI_buffer, PredType::STD_I8LE, mspaceI, fspaceI);
+            }
+            else if (size == 2)
+            {
+                datasetI->read(TxI_buffer, PredType::STD_I16LE, mspaceI, fspaceI);
+            }
+            else
+            {
+                it_error("We do not supoort this data fromat");
+            }
+        }
+
+        data_read.set_length(Count, false);
+        for (j = 0; j < Count; j++)
+        {
+            // cout << "out_j = " << TxI_buffer[j] << endl;
+            data_read(j) = TxI_buffer[j];
+        }
+        delete datasetI;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+void MLCMSD::read_subset_of_1D_dataset_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, vec &data_read)
+{
+
+    hsize_t size;
+    /*
+        L is the half of the cw length
+    */
+    int i, j;
+    double TxI_buffer[Count]; /* output buffer */
+    for (j = 0; j < Count; j++)
+    {
+        TxI_buffer[j] = 0;
+    }
+
+    try
+    {
+        /*
+            * Turn off the auto-printing when failure occurs so that we can
+            * handle the errors appropriately
+        */
+        Exception::dontPrint();
+
+        /*
+            * Open the specified file and the specified dataset in the file.
+       */
+        H5File *file = new H5File(Fname, H5F_ACC_RDONLY);
+        DataSet *datasetI = new DataSet(file->openDataSet(Dname)); // our standard
+
+        /*
+            * Get the class of the datatype that is used by the dataset.
+        */
+        H5T_class_t type_classI = datasetI->getTypeClass();
+
+        /*
+        * Get dataspace of the dataset.
+        */
+        DataSpace fspaceI = datasetI->getSpace();
+        /*
+        * Get the number of dimensions in the dataspace.
+        */
+        int rankI = fspaceI.getSimpleExtentNdims();
+        if (rankI > 1)
+        {
+            it_error("This is a 2D data set!");
+        }
+
+        /*
+        * Get the dimension size of each dimension in the dataspace and
+        * display them.
+        */
+        hsize_t dims_outI[1];
+        int ndimsI = fspaceI.getSimpleExtentDims(dims_outI, NULL);
+
+        /*
+        * Create memory dataspace.
+    */
+        hsize_t mdim[] = {Count}; /* Dimension sizes of the
+                                                   dataset in memory when we
+                                                   read selection from the
+                                                   dataset on the disk */
+        DataSpace mspaceI(1, mdim);
+        /*
+        * Select hyperslab in memory and file dataspace. Hyperslab has the same
+        * size and shape as the selected hyperslabs for the file dataspace.
+    */
+        hsize_t startm[1];  // Start of hyperslab
+        hsize_t stridem[1]; // Stride of hyperslab
+        hsize_t countm[1];  // Block count
+        hsize_t blockm[1];  // Block sizes
+        startm[0] = 0;
+        blockm[0] = 1;
+        stridem[0] = 1;
+        countm[0] = Count;
+
+        hsize_t start[1];  // Start of hyperslab
+        hsize_t stride[1]; // Stride of hyperslab
+        hsize_t count[1];  // Block count
+        hsize_t block[1];  // Block sizes
+        start[0] = 0;
+        block[0] = 1;
+        stride[0] = 1;
+        count[0] = Count; // dims_outI[0];
+        /*
+            read col_i from Tx and Rx and combine them together in a vector (data_read)
+        */
+
+        start[0] = col_i * Count;
+        fspaceI.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        mspaceI.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+        /*
+            Read data back to the buffer
+        */
+        if (Ctype == H5T_FLOAT) // H5T_FLOAT
+        {
+            FloatType floattype = datasetI->getFloatType();
+            size = floattype.getSize();
+            if (size == 4)
+            {
+                datasetI->read(TxI_buffer, PredType::IEEE_F32LE, mspaceI, fspaceI);
+            }
+            else if (size == 8)
+            {
+                datasetI->read(TxI_buffer, PredType::IEEE_F64LE, mspaceI, fspaceI);
+            }
+            else
+            {
+                it_error("We do not supoort this data fromat for float");
+            }
+        }
+        else if (Ctype == H5T_INTEGER) // H5T_INTEGER
+        {
+            it_error("This is not float data type");
+        }
+
+        data_read.set_length(Count, false);
+        for (j = 0; j < Count; j++)
+        {
+            data_read(j) = TxI_buffer[j];
+        }
+        delete datasetI;
+        delete file;
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+
+void MLCMSD::add_dataset(H5File &hdf5file, string DATASET_NAME, PredType pre_def_type, hsize_t FSPACE_RANK, hsize_t Dims[], DataSpace &fspace, DataSet &dataset)
+{
+
+    Dims[0];
+    if (pre_def_type == PredType::STD_I8LE)
+    {
+        /*
+            * Create property list for a dataset and set up fill values.
+        */
+        int8_t fillvalue = 0; /* Fill value for the dataset syndrome */
+        DSetCreatPropList plist;
+        plist.setFillValue(PredType::STD_I8LE, &fillvalue);
+        /*
+    * Create dataspace for the syndrome dataset in the file.
+    */
+        fspace = DataSpace(FSPACE_RANK, Dims);
+        /*
+        *    Create dataset and write it into the file.
+        */
+        dataset = hdf5file.createDataSet(DATASET_NAME, PredType::STD_I8LE, fspace, plist);
+    }
+    else if (pre_def_type == PredType::NATIVE_FLOAT)
+    {
+        /*
+            * Create property list for a dataset and set up fill values.
+        */
+        float fillvalue = 0.0; /* Fill value for the dataset syndrome */
+        DSetCreatPropList plist;
+        plist.setFillValue(PredType::NATIVE_FLOAT, &fillvalue); // fill value type
+        /*
+    * Create dataspace for the syndrome dataset in the file.
+    */
+        fspace = DataSpace(FSPACE_RANK, Dims);
+        /*
+        *    Create dataset and write it into the file.
+        */
+        dataset = hdf5file.createDataSet(DATASET_NAME, PredType::NATIVE_FLOAT, fspace, plist);
+    }
+    else if (pre_def_type == PredType::STD_I16LE)
+    {
+
+        int16_t fillvalue = 0; /* Fill value for the dataset syndrome */
+        DSetCreatPropList plist;
+        plist.setFillValue(PredType::STD_I16LE, &fillvalue);
+
+        fspace = DataSpace(FSPACE_RANK, Dims);
+
+        dataset = hdf5file.createDataSet(DATASET_NAME, PredType::STD_I16LE, fspace, plist);
+    }
+    else if (pre_def_type == PredType::NATIVE_DOUBLE)
+    {
+        double fillvalue = 0; /* Fill value for the dataset syndrome */
+        DSetCreatPropList plist;
+        plist.setFillValue(PredType::NATIVE_DOUBLE, &fillvalue);
+
+        fspace = DataSpace(FSPACE_RANK, Dims);
+
+        dataset = hdf5file.createDataSet(DATASET_NAME, PredType::NATIVE_DOUBLE, fspace, plist);
+    }
+    else
+    {
+        it_error("Do not support this data type");
+    }
+};
+
+
+void MLCMSD::write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, vec &ith_frame_Tx)
+{
+    const int MSPACE1_RANK = 1; // Rank of the first dataset in memory
+    int i, j;                   // loop indices */
+
+    try
+    {
+        /*
+     * Turn off the auto-printing when failure occurs so that we can
+     * handle the errors appropriately
+     */
+        Exception::dontPrint();
+        /*
+     * Select hyperslab for the dataset in the file, using 1x1 blocks,
+     * (1,1) stride and (M,1) count starting at the position (0,0).
+     */
+        hsize_t start[1];  // Start of hyperslab
+        hsize_t stride[1]; // Stride of hyperslab
+        hsize_t count[1];  // Block count
+        hsize_t block[1];  // Block sizes
+        start[0] = 0;
+        stride[0] = 1;
+        count[0] = 1;
+        block[0] = Count;
+
+        /*
+            * Create dataspace for the dataset.
+        */
+        hsize_t dim1[] = {Count}; /* Dimension size of the first dataset (in memory) */
+        DataSpace mspace1(MSPACE1_RANK, dim1);
+
+        /*
+     * Select hyperslab.
+     * We will use L elements of the vector buffer starting at the
+     * zero element.  Selected elements are 0 2 3 . . . L-1
+     */
+        hsize_t startm[1];  // Start of hyperslab
+        hsize_t stridem[1]; // Stride of hyperslab
+        hsize_t countm[1];  // Block count
+        hsize_t blockm[1];  // Block sizes
+        startm[0] = 0;
+        stridem[0] = 1;
+        countm[0] = 1;
+        blockm[0] = Count;
+        mspace1.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+
+        /*
+     * Write selection from the vector buffer to the dataset in the file.
+     *    
+     */
+        double buff_vector[Count]; // vector buffer for dset
+
+        start[0] = ith_frame * Count;
+        fspace.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        /*
+        * Buffer update.
+        */
+
+        for (i = 0; i < Count; i++)
+            buff_vector[i] = ith_frame_Tx(i);
+
+        dataset.write(buff_vector, pre_def_type, mspace1, fspace);
+
+    } // end of try lock
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+void MLCMSD::write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, ivec &ith_frame_Tx)
+{
+    const int MSPACE1_RANK = 1; // Rank of the first dataset in memory
+    int i, j;                   // loop indices */
+
+    try
+    {
+        /*
+     * Turn off the auto-printing when failure occurs so that we can
+     * handle the errors appropriately
+     */
+        Exception::dontPrint();
+        /*
+     * Select hyperslab for the dataset in the file, using 1x1 blocks,
+     * (1,1) stride and (M,1) count starting at the position (0,0).
+     */
+        hsize_t start[1];  // Start of hyperslab
+        hsize_t stride[1]; // Stride of hyperslab
+        hsize_t count[1];  // Block count
+        hsize_t block[1];  // Block sizes
+        start[0] = 0;
+        stride[0] = 1;
+        count[0] = 1;
+        block[0] = Count;
+
+        /*
+            * Create dataspace for the dataset.
+        */
+        hsize_t dim1[] = {Count}; /* Dimension size of the first dataset (in memory) */
+        DataSpace mspace1(MSPACE1_RANK, dim1);
+
+        /*
+     * Select hyperslab.
+     * We will use L elements of the vector buffer starting at the
+     * zero element.  Selected elements are 0 2 3 . . . L-1
+     */
+        hsize_t startm[1];  // Start of hyperslab
+        hsize_t stridem[1]; // Stride of hyperslab
+        hsize_t countm[1];  // Block count
+        hsize_t blockm[1];  // Block sizes
+        startm[0] = 0;
+        stridem[0] = 1;
+        countm[0] = 1;
+        blockm[0] = Count;
+        mspace1.selectHyperslab(H5S_SELECT_SET, countm, startm, stridem, blockm);
+
+        /*
+     * Write selection from the vector buffer to the dataset in the file.
+     *    
+     */
+        int16_t buff_vector[Count]; // vector buffer for dset
+
+        start[0] = ith_frame * Count;
+        fspace.selectHyperslab(H5S_SELECT_SET, count, start, stride, block);
+
+        /*
+        * Buffer update.
+        */
+
+        for (i = 0; i < Count; i++)
+            buff_vector[i] = ith_frame_Tx(i);
+
+        dataset.write(buff_vector, pre_def_type, mspace1, fspace);
+
+    } // end of try lock
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error)
+    {
+        error.printErrorStack();
+    }
+    // catch failure caused by the DataSpace operations
+    catch (DataSpaceIException error)
+    {
+        error.printErrorStack();
+    }
+};
+
+
+
+
