@@ -34,8 +34,11 @@ class MLCMSD
 private:
     int NoLs = 6;               // num_levels = 6;
     int NoLiU = 3;              // number_of_levels_in_use = 3;
-    int CFL = 1000;             // common_frame_length;
-    bvec EncPattern = "111000"; // if 0 then no decoding and just plaintext are sent
+    int CFL = 1000000;             // common_frame_length;
+    double R1 = 1.0;            // code rate R1
+    double R2 = 1.0;            // code rate R2
+    double R3 = 1.0;            // code rate R3
+    bvec EncPattern = "1 1 1 0 0 0"; // if 0 then no decoding and just plaintext are sent
 
 public:
     MLCMSD()
@@ -55,11 +58,13 @@ public:
     void set_num_level_in_use(int NoLiU_val);
     void set_common_frame_length(int CFL_val);
     void set_enc_pattern(bvec Enc_pattern_val);
+    void set_Rate(double Rate_val, int level_no);
 
     /*
         MLC environment
         Get methods
     */
+
     int get_num_level_in_use() { return NoLiU; };
 
     int get_common_frame_length() { return CFL; };
@@ -68,9 +73,13 @@ public:
         MLC environment
         Check methods
     */
+
+   void load_env(string filetxt, int &CFL, int &NoLs, int &NoLiU, double &R1, double &R2, double &R3);
+
     void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
 
     void initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
+
 
     void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
@@ -108,6 +117,7 @@ public:
     void get_dataset_info(string Fname, string Dname, H5T_class_t &Ctype, int &Rank, hsize_t Dims[], size_t &type_size, bool Disp_flag);
     void get_dataset_info(string Fname, string Dname, int &Rank, hsize_t Dims[], H5std_string &my_dtype, bool Disp_flag);
     void reshape_h5(string FnameInp, string Dnames[], int numdatasets, string FnameOut);
+    void combine_datasets(string FnameInp, string Dnames[], int numdatasets, string FnameOut);
 
     void read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, ivec &data_read);
     void read_col_i_from_h5(string Fname, string Dname, H5T_class_t &Ctype, hsize_t Count, int col_i, vec &data_read);
@@ -118,6 +128,15 @@ public:
 
     void write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, vec &ith_frame_Tx);
     void write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, ivec &ith_frame_Tx);
+    void write_to_1D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, size_t type_size, hsize_t Count, size_t ith_frame, ivec &ith_frame_Tx);
+
+
+    void write_to_2D_dataset_ith_frame(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, size_t ith_frame, bvec &ith_frame_Tx);
+
+
+    void write_to_2D_dataset_ith_index_mapping(DataSet &dataset, DataSpace &fspace, PredType pre_def_type, hsize_t Count, hsize_t dim, hsize_t zth_frame, bmat &buffer_mat);
+    void write_to_2D_dataset_ith_index_mapping(DataSet &dataset, DataSpace &fspace, string dtype, hsize_t Count, hsize_t dim, hsize_t zth_frame, bmat &buffer_mat);
+
 };
 
 #endif /* class MLCMSD */
