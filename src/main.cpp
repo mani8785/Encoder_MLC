@@ -12,6 +12,7 @@ Details: load real data and test the decoder.
 #include <iomanip>
 #include <itpp/comm/modulator.h>
 #include "mlcmsd.h"
+#include "RogWH5.h"
 #include <cstdlib>
 
 // ================================================ Main function
@@ -22,7 +23,7 @@ int main(int argc, char **argv)
     string path_to_parity3 = "/home/hosma/Documents/VSCODE/Data/LDPC/H_1000000_0.50.it";
 
     // string path_to_inputH5 = "/home/hosma/Documents/100-Largefiles/20201219-IntegerTxRxSymbols/B2B/int8TxSymbols.h5";
-    string path_to_inputH5 = "/home/hosma/Documents/100-Largefiles/20210115-TxRxSymbols for EC/20km/Txfile.h5";
+    string path_to_inputH5 = "/home/hosma/Documents/100-Largefiles/20210115-TxRxSymbols for EC/20km/Rxfile.h5";
     string path_to_outptH5 = "/home/hosma/Documents/100-Largefiles/EncDataMLCMSD.h5";
     /*
         To measure time of encoding
@@ -42,10 +43,10 @@ int main(int argc, char **argv)
     int max_iter_LDPC = 50;                 // maximum number of iteration for the LDPC decoder.
 
 
-    int NoLs;                               /* Number of levels */
-    int NoLiU;                              /* Number of levels in use */
+    hsize_t NoLs;                               /* Number of levels */
+    hsize_t NoLiU;                              /* Number of levels in use */
     bvec EncPattrn = "1 1 1 0 0 0"; 
-    int CFL;                                /* Common frame length */
+    hsize_t CFL;                                /* Common frame length */
 
     double R1, R2, R3;                      /* Code rates values it might not be used*/
     mlc_env.load_env("struct.txt", CFL, NoLs, NoLiU, R1, R2, R3);
@@ -100,99 +101,83 @@ int main(int argc, char **argv)
     mlc_env.update_level_info(&info_l2, &ldpc2, 2, path_to_parity1);
     mlc_env.update_level_info(&info_l3, &ldpc3, 3, path_to_parity1);
     mlc_env.check_structure(&info_l1, &info_l2, &info_l3);
-
-
-
-    /*
+     /*
         Structure of the input h5:
-            two datasets with names TxI and TxQ
+            two datasets with names RxI and RxQ
+            Integer
     */
-    int num_dsets = 2;
-    string DsetNames[num_dsets] = {"TxI0", "TxQ0"};
-    bool multiple_groups = true;
+    string DsetNames[2] = {"RxI", "RxQ"};
+    bool multiple_group_flg = true; // set it true if the file contains multiple 1D group names
+    if (multiple_group_flg)
+    {
+        string DsetNames_multi[2] = {"RxI0", "RxQ0"};
+        combine_datasets(path_to_inputH5, DsetNames_multi, 484, "temp1D.h5", DsetNames);
+        path_to_inputH5 = "temp1D.h5";
+    }
     /*
-        If it is 2D convert it to a new 1D file
+        File prepration
+            1- TNoEs: Total number of elements
+            2- CFL : Common frame length
+            3- TFN : Total Frame number
+            4- Convert 2D dataset to appropritae 2D        
     */
-    H5T_class_t Ctype;  // data type
-    size_t size_type;   // size of each element in byte
     hsize_t Dims[2];    // Dimension of the dataset
     int rankI = 1;      // determines 1D or 2D
     string dtypeIn;     // Valid data type are : int8, int16, float, double
-    mlc_env.get_dataset_info(path_to_inputH5, "TxI0", Ctype, rankI, Dims, size_type, false);
-    if (rankI == 2)
-    {
-        mlc_env.reshape_h5(path_to_inputH5, DsetNames, rankI, "temp_input.h5");
-        path_to_inputH5 = "temp_input.h5";
-        mlc_env.get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
-    }
-    else if (rankI == 1)
-    {
-        if (multiple_groups)
-        {
-            mlc_env.combine_datasets(path_to_inputH5, DsetNames, 100, "temp_input.h5");
-            path_to_inputH5 = "temp_input.h5";
-        mlc_env.get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
-        } else 
-        {
-            mlc_env.get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
-        }  
-    }
-    else
-    {
-        it_error("Only support 1D or 2D datasets");
-    }
+    get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
+    hsize_t TNoEs, TFN, HCFL;
+    HCFL = CFL/2;
     /*
-        Assign the frame length for Encoder (cw_length)
-        Assign the buffer size to read data from h5 file (cwl or Count)
-            Count size is eqaul to the cw_length/2. 
-        Calculate the total frame number 
-        Calculate total number of elements in the file in each dataset
-        Switch between dtype and sellect appropriate read and write methods
+        Reshape input dataset to appropriate dimension
+            1-If input is 1D then convert it to a 2D dataset
+                  2-remove 1D dataset
+            2-If input is 2D convert it to the appropriate 2D format
     */
-    hsize_t TFN; // total frame_number;
-    hsize_t TNE; // total_num_elements;
-    hsize_t RWL = CFL / 2; // Read window length
     if (rankI == 1)
     {
-        TNE = Dims[0];
-        TFN = TNE / RWL;
-    }
-    else
+        TNoEs = Dims[0];
+        TFN = TNoEs / HCFL;
+        reshape_h5_1D_to_2D(path_to_inputH5, DsetNames, 2, "tempInp2D.h5", HCFL);
+        if (multiple_group_flg)
+            system("rm temp1D.h5");
+        
+        path_to_inputH5 = "tempInp2D.h5";
+        get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
+    } else if (rankI == 2)
     {
-        TNE = Dims[0] * Dims[1];
-        TFN = TNE / RWL;
+        TNoEs = Dims[0] * Dims[1];
+        TFN = TNoEs / HCFL;
+        reshape_h5_2D_to_1D(path_to_inputH5, DsetNames, 2, "temp1D.h5");
+        reshape_h5_1D_to_2D("temp1D.h5", DsetNames, 2, "tempInp2D.h5", HCFL);
+        path_to_inputH5 = "tempInp2D.h5";
+        get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
+        system("rm temp1D.h5");
     }
-
-
-
-
     /*
         Buffers to read the data from H5 file
     */
-    ivec Txi, TxIi, TxQi; 
-    Txi.set_length(CFL, false);
-    TxIi.set_length(RWL, false);
-    TxQi.set_length(RWL, false);
+    ivec Rxi, RxIi, RxQi; 
+    Rxi.set_length(CFL, false);
+    RxIi.set_length(HCFL, false);
+    RxQi.set_length(HCFL, false);
     
-    bmat Txi_bin;
-    bmat Txi_bin8;
-    Txi_bin.set_size(CFL, NoLs, false);
-    Txi_bin8.set_size(CFL, 8, false);
+    bmat Rxi_bin;
+    bmat Rxi_bin8;
+    Rxi_bin.set_size(CFL, NoLs, false);
+    Rxi_bin8.set_size(CFL, 8, false);
     
     int ifc = 0;
     // Boolean
     // =========== Binary hard vectors boolian 0 or 1
     bvec bin_b_level_1, bin_b_level_2, bin_b_level_3;
-
-
     /*
         Create a *.h5 file to wtite the encoded data in it
             path_to_outptH5.h5
-                |______________________ SYND0,       Rank = 2,   (ncheck1, frame_number),     dtype Hbool
-                |______________________ SYND1,       Rank = 2,   (ncheck2, frame_number),     dtype Hbool
-                |______________________ SYND2,       Rank = 2,   (ncheck3, frame_number),     dtype Hbool                                
+                |______________________ SYND0,       Rank = 2,   (frame_number, ncheck1),     dtype Hbool
+                |______________________ SYND1,       Rank = 2,   (frame_number, ncheck2),     dtype Hbool
+                |______________________ SYND2,       Rank = 2,   (frame_number, ncheck3),     dtype Hbool                                
                 |
-                |______________________ PLAINTXT,    Rank = 2,   (nvar*(6-i)), frame_number),     dtype Hbool
+                |______________________ PLAINTXT,    Rank = 2,   (frame_number, nvar*(6-i))),     dtype Hbool
    */
     printf("# ------------------------------------------------------\n");
     printf("# -------------- %8s", "MLC-MSD Encoding \n");
@@ -203,25 +188,25 @@ int main(int argc, char **argv)
     DataSet dataset_S0;
     string Dsname_S0 = "SYND0";
     hsize_t nrow_synd0 = (hsize_t) ldpc1.get_ncheck();
-    hsize_t Dims_ds_S0[2] = {nrow_synd0, TFN};
+    hsize_t Dims_ds_S0[2] = {TFN, nrow_synd0};
 
     DataSpace fspace_S1;
     DataSet dataset_S1;
     string Dsname_S1 = "SYND1";
     hsize_t nrow_synd1 = (hsize_t) ldpc2.get_ncheck();
-    hsize_t Dims_ds_S1[2] = {nrow_synd1, TFN};
+    hsize_t Dims_ds_S1[2] = {TFN, nrow_synd1};
 
     DataSpace fspace_S2;
     DataSet dataset_S2;
     string Dsname_S2 = "SYND2";
     hsize_t nrow_synd2 = (hsize_t) ldpc3.get_ncheck();
-    hsize_t Dims_ds_S2[2] = {nrow_synd2, TFN};
+    hsize_t Dims_ds_S2[2] = {TFN, nrow_synd2};
 
     DataSpace fspace_plaintext;
     DataSet dataset_plaintext;
     string Dsname_plaintext = "PLAINTXT";
-    hsize_t nrow_plaintext = (hsize_t) (NoLs-1) * (hsize_t) CFL;
-    hsize_t Dims_ds_plaintext[2] = {nrow_plaintext, TFN};
+    // hsize_t nrow_plaintext = (hsize_t) (NoLs-1) * (hsize_t) CFL;
+    hsize_t Dims_ds_plaintext[2] = {TFN, CFL};
     
     switch (mlc_env.get_num_level_in_use())
     {
@@ -232,12 +217,11 @@ int main(int argc, char **argv)
         /*
             Add dataset for Synd0
         */
-        mlc_env.add_dataset(file, Dsname_S0, PredType::NATIVE_HBOOL, 2, Dims_ds_S0, fspace_S0, dataset_S0);
-
+       add_dataset(file, Dsname_S0, "bool", 2, Dims_ds_S0, fspace_S0, dataset_S0);
         /*
             Add dataset for plaintexts
         */
-        mlc_env.add_dataset(file, Dsname_plaintext, PredType::NATIVE_HBOOL, 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
+       add_dataset(file, Dsname_plaintext, "bool", 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
         break;
     
     case 2:
@@ -248,17 +232,17 @@ int main(int argc, char **argv)
         /*
             Add dataset for Synd0 and Synd1
         */
-        mlc_env.add_dataset(file, Dsname_S0, PredType::NATIVE_HBOOL, 2, Dims_ds_S0, fspace_S0, dataset_S0);
-        mlc_env.add_dataset(file, Dsname_S1, PredType::NATIVE_HBOOL, 2, Dims_ds_S1, fspace_S1, dataset_S1);
+        add_dataset(file, Dsname_S0, "bool", 2, Dims_ds_S0, fspace_S0, dataset_S0);
+        add_dataset(file, Dsname_S1, "bool", 2, Dims_ds_S1, fspace_S1, dataset_S1);
 
         /*
             Add dataset for plaintexts
         */
-        nrow_plaintext = (hsize_t) (NoLs-2) * (hsize_t) CFL;
-        Dims_ds_plaintext[0] = nrow_plaintext;
-        Dims_ds_plaintext[1] = TFN;
+        // nrow_plaintext = (hsize_t) (NoLs-2) * (hsize_t) CFL;
+        Dims_ds_plaintext[0] = TFN;
+        Dims_ds_plaintext[1] = CFL; // nrow_plaintext;
     
-        mlc_env.add_dataset(file, Dsname_plaintext, PredType::NATIVE_HBOOL, 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
+        add_dataset(file, Dsname_plaintext, "bool", 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
         break;
     
     case 3:
@@ -269,17 +253,18 @@ int main(int argc, char **argv)
         /*
             Add dataset for Synd0 and Synd1, Synd2
         */
-        mlc_env.add_dataset(file, Dsname_S0, PredType::NATIVE_HBOOL, 2, Dims_ds_S0, fspace_S0, dataset_S0);
-        mlc_env.add_dataset(file, Dsname_S1, PredType::NATIVE_HBOOL, 2, Dims_ds_S1, fspace_S1, dataset_S1);
-        mlc_env.add_dataset(file, Dsname_S2, PredType::NATIVE_HBOOL, 2, Dims_ds_S2, fspace_S2, dataset_S2);
+
+        add_dataset(file, Dsname_S0, "bool", 2, Dims_ds_S0, fspace_S0, dataset_S0);
+        add_dataset(file, Dsname_S1, "bool", 2, Dims_ds_S1, fspace_S1, dataset_S1);
+        add_dataset(file, Dsname_S2, "bool", 2, Dims_ds_S2, fspace_S2, dataset_S2);
         /*
             Add dataset for plaintexts
         */
-        nrow_plaintext = (hsize_t) (NoLs-3) * (hsize_t) CFL;
-        Dims_ds_plaintext[0] = nrow_plaintext;
-        Dims_ds_plaintext[1] = TFN;
+        // nrow_plaintext = (hsize_t) (NoLs-3) * (hsize_t) CFL;
+        Dims_ds_plaintext[0] = TFN;
+        Dims_ds_plaintext[1] = CFL; // nrow_plaintext;
     
-        mlc_env.add_dataset(file, Dsname_plaintext, PredType::NATIVE_HBOOL, 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
+        add_dataset(file, Dsname_plaintext, "bool", 2, Dims_ds_plaintext, fspace_plaintext, dataset_plaintext);
         break;
     
     default:
@@ -310,26 +295,37 @@ int main(int argc, char **argv)
         printf("# \t ** %-16s\t : %-16d", " The current frame ", (int)ifc+1);
         fflush(stdout);
         // cout << "current Frame is:" << ifc << endl;
-        mlc_env.read_subset_of_1D_dataset_h5(path_to_inputH5, "TxI0", Ctype, RWL, ifc, TxIi);
-        mlc_env.read_subset_of_1D_dataset_h5(path_to_inputH5, "TxQ0", Ctype, RWL, ifc, TxQi);
+
+        // mlc_env.read_subset_of_1D_dataset_h5(path_to_inputH5, "TxI0", Ctype, HCFL, ifc, RxIi);
+        // mlc_env.read_subset_of_1D_dataset_h5(path_to_inputH5, "TxQ0", Ctype, HCFL, ifc, RxQi);
+         if (rankI == 1)
+        {
+            read1D_subset(path_to_inputH5, "RxI", HCFL, ifc, RxIi);
+            read1D_subset(path_to_inputH5, "RxQ", HCFL, ifc, RxQi);
+        }
+        else if (rankI == 2)
+        {
+            read2D_from_row_j(path_to_inputH5, "RxI", HCFL, ifc, RxIi);
+            read2D_from_row_j(path_to_inputH5, "RxQ", HCFL, ifc, RxQi);
+        }
         /*
             Combine the two vectors in a new vector of length 2*cwl
         */
-        Txi.set_subvector(0, TxIi);
-        Txi.set_subvector(RWL, TxQi);
-        Txi += 32; // binary mapping
+        Rxi.set_subvector(0, RxIi);
+        Rxi.set_subvector(HCFL, RxQi);
+        Rxi += 32; // binary mapping
 
         // ------------------------ Digitization
         cout << endl;
         for (int cc = 0; cc < CFL; cc++)
         {   
-            Txi_bin.set_row( cc, dec2bin(NoLs, Txi(cc)) );
-            Txi_bin8.set_row(cc, dec2bin(8,    Txi(cc)) );
+            Rxi_bin.set_row( cc, dec2bin(NoLs, Rxi(cc)) );
+            Rxi_bin8.set_row(cc, dec2bin(8,    Rxi(cc)) );
         }
 
-        bin_b_level_1 = Txi_bin.get_col(0); // just for test
-        bin_b_level_2 = Txi_bin.get_col(1);
-        bin_b_level_3 = Txi_bin.get_col(2);
+        bin_b_level_1 = Rxi_bin.get_col(0); // just for test
+        bin_b_level_2 = Rxi_bin.get_col(1);
+        bin_b_level_3 = Rxi_bin.get_col(2);
 
         if (mlc_env.get_num_level_in_use() == 1)
         {
@@ -337,11 +333,15 @@ int main(int argc, char **argv)
             bvec encded_data;
             encded_data.set_length(info_l1.pl, false);
             bmat plain_texts;
+            ivec plain_texts_decim;
             plain_texts.set_size(CFL, NoLs - 1, false);
-            mlc_env.encoder_one_level(&Txi_bin, &info_l1, &plain_texts, &encded_data);
+            plain_texts_decim.set_size(CFL, false);
+            mlc_env.encoder_one_level(&Rxi_bin, &info_l1, &plain_texts, plain_texts_decim, &encded_data);
 
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S0, fspace_S0, PredType::NATIVE_HBOOL, nrow_synd0, ifc, encded_data);
-            mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-1), ifc, plain_texts);
+            write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, encded_data);
+            write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
+
+            // mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-1), ifc, plain_texts);
         }
         else if (mlc_env.get_num_level_in_use() == 2)
         {
@@ -351,12 +351,16 @@ int main(int argc, char **argv)
             enc_data_2.set_length(info_l2.pl, false);
             bmat plain_texts_new;
             plain_texts_new.set_size(CFL, NoLs - 2, false);
-            mlc_env.encoder_two_levels(&Txi_bin, &info_l1, &info_l2, &plain_texts_new, &enc_data_1, &enc_data_2);
 
+            ivec plain_texts_decim;
+            plain_texts_decim.set_size(CFL, false);
+            mlc_env.encoder_two_levels(&Rxi_bin, &info_l1, &info_l2, &plain_texts_new, plain_texts_decim, &enc_data_1, &enc_data_2);
 
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S0, fspace_S0, PredType::NATIVE_HBOOL, nrow_synd0, ifc, enc_data_1);
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S1, fspace_S1, PredType::NATIVE_HBOOL, nrow_synd1, ifc, enc_data_2);
-            mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-2), ifc, plain_texts_new);
+            write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, enc_data_1);
+            write2D_to_dataset_row_j(dataset_S1, fspace_S1, "bool", nrow_synd1, ifc, enc_data_2);
+
+            write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
+            // mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-2), ifc, plain_texts_new);
         }
         else if (mlc_env.get_num_level_in_use() == 3)
         {
@@ -367,13 +371,21 @@ int main(int argc, char **argv)
             enc_data_3.set_length(info_l3.pl, false);
             bmat plain_texts_2_to_0;
             plain_texts_2_to_0.set_size(CFL, NoLs - 3, false);
-            mlc_env.encoder_three_levels(&Txi_bin, &info_l1, &info_l2, &info_l3, &plain_texts_2_to_0, &enc_data_1, &enc_data_2, &enc_data_3);
+            
+            ivec plain_texts_decim;
+            plain_texts_decim.set_size(CFL, false);
+            mlc_env.encoder_three_levels(&Rxi_bin, &info_l1, &info_l2, &info_l3, &plain_texts_2_to_0, plain_texts_decim, &enc_data_1, &enc_data_2, &enc_data_3);
 
 
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S0, fspace_S0, PredType::NATIVE_HBOOL, nrow_synd0, ifc, enc_data_1);
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S1, fspace_S1, PredType::NATIVE_HBOOL, nrow_synd1, ifc, enc_data_2);
-            mlc_env.write_to_2D_dataset_ith_frame(dataset_S2, fspace_S2, PredType::NATIVE_HBOOL, nrow_synd2, ifc, enc_data_3);
-            mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-2), ifc, plain_texts_2_to_0);
+            write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, enc_data_1);
+            write2D_to_dataset_row_j(dataset_S1, fspace_S1, "bool", nrow_synd1, ifc, enc_data_2);
+            write2D_to_dataset_row_j(dataset_S2, fspace_S2, "bool", nrow_synd2, ifc, enc_data_3);
+
+            
+            write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
+
+
+            // mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-2), ifc, plain_texts_2_to_0);
         }
         else
         {
@@ -399,7 +411,7 @@ int main(int argc, char **argv)
     int ss = (int) elapse_time - hh*3600 - 60*mm;
     printf("\n");
     printf("# \t ** %-16s\t : %-3d hh:%3d mm:%3d ss\n", " Elapsed time ", hh, mm, ss);
-    printf("# \t ** %-16s\t : %-8.4f \n", " Throughput (Kbps)", TNE/elapse_time/1024*8);
+    printf("# \t ** %-16s\t : %-8.4f \n", " Throughput (Kbps)", TNoEs/elapse_time/1024*8);
     printf("\n# END of Simulation\n");
     printf("\e[0m");
     return 0;

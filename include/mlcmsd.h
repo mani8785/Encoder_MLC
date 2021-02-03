@@ -74,7 +74,7 @@ public:
         Check methods
     */
 
-   void load_env(string filetxt, int &CFL, int &NoLs, int &NoLiU, double &R1, double &R2, double &R3);
+   void load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3);
 
     void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
 
@@ -102,9 +102,9 @@ public:
         Encoding methods 
         Applied to each frame
     */
-    void encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, bvec *enc_data_hard);
-    void encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, bvec *enc_data_hard_1, bvec *enc_data_hard_2);
-    void encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3);
+    void encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, ivec &plain_texts_decim, bvec *enc_data_hard);
+    void encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2);
+    void encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3);
 
     /*
         Read and write from/to h5 files for data

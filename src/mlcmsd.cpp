@@ -85,7 +85,7 @@ void MLCMSD::set_Rate(double Rate_val, int level_no)
     }
 };
 
-void MLCMSD::load_env(string filetxt, int &CFL, int &NoLs, int &NoLiU, double &R1, double &R2, double &R3)
+void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3)
 {
     /*
     This method load a txt file.
@@ -516,7 +516,7 @@ void MLCMSD::display_table_title()
 }
 
 // ==================== Enc/Dec for one level
-void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, bvec *enc_data_hard)
+void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, ivec &plain_texts_decim, bvec *enc_data_hard)
 {
     bvec bin_xB_5 = qxB_bin->get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
@@ -526,10 +526,16 @@ void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level
         *enc_data_hard = synd_llr_xB_5 > 0;
     }
     *plain_texts = qxB_bin->get(0, CFL - 1, 1, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts->get_row(i)));
+    }
+    
+    
 }
 
 // ==================== Enc/Dec for Two levels
-void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, bvec *enc_data_hard_1, bvec *enc_data_hard_2)
+void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2)
 {
     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     bvec bin_xB_4 = qxB_bin->get_col(1);
@@ -548,11 +554,15 @@ void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_leve
     }
 
     *plain_texts_two_levels = qxB_bin->get(0, CFL - 1, 2, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts_two_levels->get_row(i)));
+    }
 }
 
 // ==================== Enc/Dec for Three levels
 
-void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
+void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
 {
     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     bvec bin_xB_4 = qxB_bin->get_col(1);
@@ -577,6 +587,10 @@ void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_le
         *enc_data_hard_3 = synd_llr_xB_3 > 0;
     }
     *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts_LSBs->get_row(i)));
+    }
 }
 
 /*
