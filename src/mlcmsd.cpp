@@ -441,7 +441,7 @@ void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *in
 
     if (lniu == 1)
     {
-        this->set_common_frame_length(nvar2);
+        this->set_common_frame_length(nvar1);
     }
     else if (lniu == 2)
     {
@@ -516,47 +516,47 @@ void MLCMSD::display_table_title()
 }
 
 // ==================== Enc/Dec for one level
-void MLCMSD::encoder_one_level(const bmat *qxB_bin, const LEVEL_INFO *info_level, bmat *plain_texts, ivec &plain_texts_decim, bvec *enc_data_hard)
+void MLCMSD::encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard)
 {
-    bvec bin_xB_5 = qxB_bin->get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+    bvec bin_xB_5 = qxB_bin.get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
-    if (info_level->pl > 0)
+    if (info_level.pl > 0)
     {
-        QLLRvec synd_llr_xB_5 = info_level->my_ldpc->soft_syndrome_check(sign_xB_5);
-        *enc_data_hard = synd_llr_xB_5 > 0;
+        QLLRvec synd_llr_xB_5 = info_level.my_ldpc->soft_syndrome_check(sign_xB_5);
+        enc_data_hard = synd_llr_xB_5 > 0;
     }
-    *plain_texts = qxB_bin->get(0, CFL - 1, 1, NoLs - 1);
+    plain_texts = qxB_bin.get(0, CFL - 1, 1, NoLs - 1);
     for (size_t i = 0; i < CFL; i++)
     {
-        plain_texts_decim.set(i, bin2dec(plain_texts->get_row(i)));
+        plain_texts_decim.set(i, bin2dec(plain_texts.get_row(i)));
     }
     
     
 }
 
 // ==================== Enc/Dec for Two levels
-void MLCMSD::encoder_two_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, bmat *plain_texts_two_levels, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2)
+void MLCMSD::encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2)
 {
-    bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
-    bvec bin_xB_4 = qxB_bin->get_col(1);
+    bvec bin_xB_5 = qxB_bin.get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+    bvec bin_xB_4 = qxB_bin.get_col(1);
     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
     ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
 
-    if (info_level1->pl > 0)
+    if (info_level1.pl > 0)
     {
-        QLLRvec synd_llr_xB_5 = info_level1->my_ldpc->soft_syndrome_check(sign_xB_5);
-        *enc_data_hard_1 = synd_llr_xB_5 > 0;
+        QLLRvec synd_llr_xB_5 = info_level1.my_ldpc->soft_syndrome_check(sign_xB_5);
+        enc_data_hard_1 = synd_llr_xB_5 > 0;
     }
-    if (info_level2->pl > 0)
+    if (info_level2.pl > 0)
     {
-        QLLRvec synd_llr_xB_4 = info_level2->my_ldpc->soft_syndrome_check(sign_xB_4);
-        *enc_data_hard_2 = synd_llr_xB_4 > 0;
+        QLLRvec synd_llr_xB_4 = info_level2.my_ldpc->soft_syndrome_check(sign_xB_4);
+        enc_data_hard_2 = synd_llr_xB_4 > 0;
     }
 
-    *plain_texts_two_levels = qxB_bin->get(0, CFL - 1, 2, NoLs - 1);
+    plain_texts_two_levels = qxB_bin.get(0, CFL - 1, 2, NoLs - 1);
     for (size_t i = 0; i < CFL; i++)
     {
-        plain_texts_decim.set(i, bin2dec(plain_texts_two_levels->get_row(i)));
+        plain_texts_decim.set(i, bin2dec(plain_texts_two_levels.get_row(i)));
     }
 }
 

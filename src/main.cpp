@@ -19,7 +19,7 @@ Details: load real data and test the decoder.
 int main(int argc, char **argv)
 {
     string path_to_parity1 = "/home/hosma/Documents/VSCODE/Data/LDPC/H_1000000_0.92.it";
-    string path_to_parity2 = "/home/hosma/Documents/VSCODE/Data/LDPC/H_1000000_0.88.it";
+    string path_to_parity2 = "/home/hosma/Documents/VSCODE/Data/LDPC/H_1000000_0.50.it"; // 0.88
     string path_to_parity3 = "/home/hosma/Documents/VSCODE/Data/LDPC/H_1000000_0.50.it";
 
     // string path_to_inputH5 = "/home/hosma/Documents/100-Largefiles/20201219-IntegerTxRxSymbols/B2B/int8TxSymbols.h5";
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     if (multiple_group_flg)
     {
         string DsetNames_multi[2] = {"RxI0", "RxQ0"};
-        combine_datasets(path_to_inputH5, DsetNames_multi, 484, "temp1D.h5", DsetNames);
+        combine_datasets(path_to_inputH5, DsetNames_multi, 10, "temp1D.h5", DsetNames);
         path_to_inputH5 = "temp1D.h5";
     }
     /*
@@ -162,9 +162,7 @@ int main(int argc, char **argv)
     RxQi.set_length(HCFL, false);
     
     bmat Rxi_bin;
-    bmat Rxi_bin8;
     Rxi_bin.set_size(CFL, NoLs, false);
-    Rxi_bin8.set_size(CFL, 8, false);
     
     int ifc = 0;
     // Boolean
@@ -313,14 +311,21 @@ int main(int argc, char **argv)
         */
         Rxi.set_subvector(0, RxIi);
         Rxi.set_subvector(HCFL, RxQi);
-        Rxi += 32; // binary mapping
-
+        /*
+            Convert to binary unsigned int
+        */
+        // for (size_t i = 0; i < CFL; i++)
+        // {
+        //     if (Rxi(i) < 0)
+        //     {
+        //         Rxi(i) += 64;
+        //     }                        
+        // }
         // ------------------------ Digitization
         cout << endl;
         for (int cc = 0; cc < CFL; cc++)
         {   
             Rxi_bin.set_row( cc, dec2bin(NoLs, Rxi(cc)) );
-            Rxi_bin8.set_row(cc, dec2bin(8,    Rxi(cc)) );
         }
 
         bin_b_level_1 = Rxi_bin.get_col(0); // just for test
@@ -336,7 +341,7 @@ int main(int argc, char **argv)
             ivec plain_texts_decim;
             plain_texts.set_size(CFL, NoLs - 1, false);
             plain_texts_decim.set_size(CFL, false);
-            mlc_env.encoder_one_level(&Rxi_bin, &info_l1, &plain_texts, plain_texts_decim, &encded_data);
+            mlc_env.encoder_one_level(Rxi_bin, info_l1, plain_texts, plain_texts_decim, encded_data);
 
             write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, encded_data);
             write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
@@ -354,7 +359,7 @@ int main(int argc, char **argv)
 
             ivec plain_texts_decim;
             plain_texts_decim.set_size(CFL, false);
-            mlc_env.encoder_two_levels(&Rxi_bin, &info_l1, &info_l2, &plain_texts_new, plain_texts_decim, &enc_data_1, &enc_data_2);
+            mlc_env.encoder_two_levels(Rxi_bin, info_l1, info_l2, plain_texts_new, plain_texts_decim, enc_data_1, enc_data_2);
 
             write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, enc_data_1);
             write2D_to_dataset_row_j(dataset_S1, fspace_S1, "bool", nrow_synd1, ifc, enc_data_2);
