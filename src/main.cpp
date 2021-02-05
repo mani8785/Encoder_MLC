@@ -119,7 +119,7 @@ int main(int argc, char **argv)
     if (multiple_group_flg)
     {
         string DsetNames_multi[2] = {"RxI0", "RxQ0"};
-        combine_datasets(path_to_inputH5, DsetNames_multi, 10, "temp1D.h5", DsetNames);
+        combine_datasets(path_to_inputH5, DsetNames_multi, 400, "temp1D.h5", DsetNames);
         path_to_inputH5 = "temp1D.h5";
     }
     /*
