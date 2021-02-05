@@ -9,10 +9,10 @@ Details: load real data and test the decoder.
 #include <itpp/itcomm.h>
 #include <itpp/srccode/vq.h>
 #include <itpp/comm/ldpc.h>
-#include <iomanip>
+
 #include <itpp/comm/modulator.h>
 #include "mlcmsd.h"
-#include "RogWH5.h"
+
 #include <cstdlib>
 
 // ================================================ Main function
@@ -35,71 +35,80 @@ int main(int argc, char **argv)
     /*
         Construct MLC environment
     */
-    MLCMSD mlc_env{}; // This will construct default environment for MLC-MSD    
+    MLCMSD mlc_env{}; // This will construct default environment for MLC-MSD   
+    mlc_env.load_env("struct.txt");
+    mlc_env.check_env();
+
+
+
     
-    LDPC_Code ldpc1;                        // empty constructor
-    LDPC_Code ldpc2;                        // empty constructor
-    LDPC_Code ldpc3;                        // empty constructor
-    int max_iter_LDPC = 50;                 // maximum number of iteration for the LDPC decoder.
-
-
-    hsize_t NoLs;                               /* Number of levels */
-    hsize_t NoLiU;                              /* Number of levels in use */
-    hsize_t CFL;                                /* Common frame length */
-
-    double R1, R2, R3;                      /* Code rates values it might not be used*/
-    mlc_env.load_env("struct.txt", CFL, NoLs, NoLiU, R1, R2, R3);
-
-    switch (mlc_env.get_NoLiU())
-    {
-    case 1:
-        /* Load the encoder for MSB level*/
-        ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
-        ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
-
-        break;
     
-    case 2:
-        /* Load the encoders for the first two levels*/
-        ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
-        ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
+    // LDPC_Code ldpc1;                        // empty constructor
+    // LDPC_Code ldpc2;                        // empty constructor
+    // LDPC_Code ldpc3;                        // empty constructor
+    // int max_iter_LDPC = 50;                 // maximum number of iteration for the LDPC decoder.
 
-        ldpc2 = mlc_env.fill_ldpc(path_to_parity2); 
-        ldpc2.set_exit_conditions(max_iter_LDPC, false, false);
 
-        break;
+    // hsize_t NoLs;                               /* Number of levels */
+    // hsize_t NoLiU;                              /* Number of levels in use */
+    // hsize_t CFL;                                /* Common frame length */
+
+    // double R1, R2, R3;                      /* Code rates values it might not be used*/
+    // mlc_env.load_env("struct.txt", CFL, NoLs, NoLiU, R1, R2, R3);
+
+
+
+    // switch (mlc_env.get_NoLiU())
+    // {
+    // case 1:
+    //     /* Load the encoder for MSB level*/
+    //     ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
+    //     ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
+
+    //     break;
     
-    case 3:
-        /* Load the encoders for the first three levels*/
-        ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
-        ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
+    // case 2:
+    //     /* Load the encoders for the first two levels*/
+    //     ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
+    //     ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
 
-        ldpc2 = mlc_env.fill_ldpc(path_to_parity2); 
-        ldpc2.set_exit_conditions(max_iter_LDPC, false, false);
+    //     ldpc2 = mlc_env.fill_ldpc(path_to_parity2); 
+    //     ldpc2.set_exit_conditions(max_iter_LDPC, false, false);
 
-        ldpc3 = mlc_env.fill_ldpc(path_to_parity3); 
-        ldpc3.set_exit_conditions(max_iter_LDPC, false, false);
-        break;
-
-    default:
-        break;
-    }
-
-    // ------------------------------ Level 1
+    //     break;
     
-    LEVEL_INFO info_l1;
-    mlc_env.initialize_struct(&info_l1, &ldpc1, 1, path_to_parity1);
-    // ------------------------------ Level 2
-    LEVEL_INFO info_l2;
-    mlc_env.initialize_struct(&info_l2, &ldpc2, 2, path_to_parity1);
-    // ------------------------------ Level 3
-    LEVEL_INFO info_l3;
-    mlc_env.initialize_struct(&info_l3, &ldpc3, 3, path_to_parity1);
-    // ================================== Compatibility test
-    mlc_env.update_level_info(&info_l1, &ldpc1, 1, path_to_parity1);
-    mlc_env.update_level_info(&info_l2, &ldpc2, 2, path_to_parity1);
-    mlc_env.update_level_info(&info_l3, &ldpc3, 3, path_to_parity1);
-    mlc_env.check_structure(&info_l1, &info_l2, &info_l3);
+    // case 3:
+    //     /* Load the encoders for the first three levels*/
+    //     ldpc1 = mlc_env.fill_ldpc(path_to_parity1); 
+    //     ldpc1.set_exit_conditions(max_iter_LDPC, false, false);
+
+    //     ldpc2 = mlc_env.fill_ldpc(path_to_parity2); 
+    //     ldpc2.set_exit_conditions(max_iter_LDPC, false, false);
+
+    //     ldpc3 = mlc_env.fill_ldpc(path_to_parity3); 
+    //     ldpc3.set_exit_conditions(max_iter_LDPC, false, false);
+    //     break;
+
+    // default:
+    //     break;
+    // }
+
+    // // ------------------------------ Level 1
+    
+    // LEVEL_INFO info_l1;
+    // mlc_env.initialize_struct(&info_l1, &ldpc1, 1, path_to_parity1);
+    // // ------------------------------ Level 2
+    // LEVEL_INFO info_l2;
+    // mlc_env.initialize_struct(&info_l2, &ldpc2, 2, path_to_parity1);
+    // // ------------------------------ Level 3
+    // LEVEL_INFO info_l3;
+    // mlc_env.initialize_struct(&info_l3, &ldpc3, 3, path_to_parity1);
+    // // ================================== Compatibility test
+    // mlc_env.update_level_info(&info_l1, &ldpc1, 1, path_to_parity1);
+    // mlc_env.update_level_info(&info_l2, &ldpc2, 2, path_to_parity1);
+    // mlc_env.update_level_info(&info_l3, &ldpc3, 3, path_to_parity1);
+    // mlc_env.check_structure(&info_l1, &info_l2, &info_l3);
+
      /*
         Structure of the input h5:
             two datasets with names RxI and RxQ
@@ -125,7 +134,11 @@ int main(int argc, char **argv)
     string dtypeIn;     // Valid data type are : int8, int16, float, double
     get_dataset_info(path_to_inputH5, DsetNames[0], rankI, Dims, dtypeIn, true);
     hsize_t TNoEs, TFN, HCFL;
+    hsize_t CFL = mlc_env.get_CFL();
+    hsize_t NoLiU = mlc_env.get_NoLiU();
+    hsize_t NoLs = 6;
     HCFL = CFL/2;
+    
     /*
         Reshape input dataset to appropriate dimension
             1-If input is 1D then convert it to a 2D dataset
@@ -184,19 +197,20 @@ int main(int argc, char **argv)
     DataSpace fspace_S0;
     DataSet dataset_S0;
     string Dsname_S0 = "SYND0";
-    hsize_t nrow_synd0 = (hsize_t) ldpc1.get_ncheck();
+    // hsize_t nrow_synd0 = (hsize_t) ldpc1.get_ncheck();
+    hsize_t nrow_synd0 = (hsize_t) mlc_env.get_ldpc(1).get_ncheck();
     hsize_t Dims_ds_S0[2] = {TFN, nrow_synd0};
 
     DataSpace fspace_S1;
     DataSet dataset_S1;
     string Dsname_S1 = "SYND1";
-    hsize_t nrow_synd1 = (hsize_t) ldpc2.get_ncheck();
+    hsize_t nrow_synd1 = (hsize_t) mlc_env.get_ldpc(2).get_ncheck(); // ldpc2.get_ncheck();
     hsize_t Dims_ds_S1[2] = {TFN, nrow_synd1};
 
     DataSpace fspace_S2;
     DataSet dataset_S2;
     string Dsname_S2 = "SYND2";
-    hsize_t nrow_synd2 = (hsize_t) ldpc3.get_ncheck();
+    hsize_t nrow_synd2 = (hsize_t) mlc_env.get_ldpc(3).get_ncheck(); // ldpc3.get_ncheck();
     hsize_t Dims_ds_S2[2] = {TFN, nrow_synd2};
 
     DataSpace fspace_plaintext;
@@ -209,7 +223,8 @@ int main(int argc, char **argv)
     {
     case 1:
         cout << "# * number of levels in use are: \t" << 1 << endl;
-        mlc_env.display_level(&info_l1, true); // short info list is true
+        // mlc_env.display_level(&info_l1, true); // short info list is true
+        mlc_env.display_level(1, true);
 
         /*
             Add dataset for Synd0
@@ -223,8 +238,10 @@ int main(int argc, char **argv)
     
     case 2:
         cout << "# * number of levels in use are: \t" << 2 << endl;
-        mlc_env.display_level(&info_l1, true); // short info list is true
-        mlc_env.display_level(&info_l2, true);
+        // mlc_env.display_level(&info_l1, true); // short info list is true
+        // mlc_env.display_level(&info_l2, true);
+        mlc_env.display_level(1, true);
+        mlc_env.display_level(2, true);
 
         /*
             Add dataset for Synd0 and Synd1
@@ -244,9 +261,12 @@ int main(int argc, char **argv)
     
     case 3:
         cout << "# * number of levels in use are: \t" << 3 << endl;
-        mlc_env.display_level(&info_l1, true); // short info list is true
-        mlc_env.display_level(&info_l2, true);
-        mlc_env.display_level(&info_l3, true);
+        // mlc_env.display_level(&info_l1, true); // short info list is true
+        // mlc_env.display_level(&info_l2, true);
+        // mlc_env.display_level(&info_l3, true);
+        mlc_env.display_level(1, true);
+        mlc_env.display_level(2, true);
+        mlc_env.display_level(3, true);
         /*
             Add dataset for Synd0 and Synd1, Synd2
         */
@@ -335,12 +355,14 @@ int main(int argc, char **argv)
         {
             // ----------------------- MLC-MSD one level
             bvec encded_data;
-            encded_data.set_length(info_l1.pl, false);
+            // encded_data.set_length(info_l1.pl, false);
+            encded_data.set_length(nrow_synd0, false);
             bmat plain_texts;
             ivec plain_texts_decim;
             plain_texts.set_size(CFL, NoLs - 1, false);
             plain_texts_decim.set_size(CFL, false);
-            mlc_env.encoder_one_level(Rxi_bin, info_l1, plain_texts, plain_texts_decim, encded_data);
+            // mlc_env.encoder_one_level(Rxi_bin, info_l1, plain_texts, plain_texts_decim, encded_data);
+            mlc_env.encoder_one_level(Rxi_bin, plain_texts, plain_texts_decim, encded_data);
 
             write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, encded_data);
             write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
@@ -351,14 +373,18 @@ int main(int argc, char **argv)
         {
             // ----------------------- MLC-MSD two levels
             bvec enc_data_1, enc_data_2;
-            enc_data_1.set_length(info_l1.pl, false);
-            enc_data_2.set_length(info_l2.pl, false);
+            // enc_data_1.set_length(info_l1.pl, false);
+            // enc_data_2.set_length(info_l2.pl, false);
+            enc_data_1.set_length(nrow_synd0, false);
+            enc_data_2.set_length(nrow_synd1, false);
+
             bmat plain_texts_new;
             plain_texts_new.set_size(CFL, NoLs - 2, false);
 
             ivec plain_texts_decim;
             plain_texts_decim.set_size(CFL, false);
-            mlc_env.encoder_two_levels(Rxi_bin, info_l1, info_l2, plain_texts_new, plain_texts_decim, enc_data_1, enc_data_2);
+            // mlc_env.encoder_two_levels(Rxi_bin, info_l1, info_l2, plain_texts_new, plain_texts_decim, enc_data_1, enc_data_2);
+            mlc_env.encoder_two_levels(Rxi_bin, plain_texts_new, plain_texts_decim, enc_data_1, enc_data_2);
 
             write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, enc_data_1);
             write2D_to_dataset_row_j(dataset_S1, fspace_S1, "bool", nrow_synd1, ifc, enc_data_2);
@@ -370,15 +396,19 @@ int main(int argc, char **argv)
         {
             // ----------------------- MLC-MSD three levels
             bvec enc_data_1, enc_data_2, enc_data_3;
-            enc_data_1.set_length(info_l1.pl, false);
-            enc_data_2.set_length(info_l2.pl, false);
-            enc_data_3.set_length(info_l3.pl, false);
+            enc_data_1.set_length(nrow_synd0, false);
+            enc_data_2.set_length(nrow_synd1, false);
+            enc_data_3.set_length(nrow_synd2, false);
+            // enc_data_1.set_length(info_l1.pl, false);
+            // enc_data_2.set_length(info_l2.pl, false);
+            // enc_data_3.set_length(info_l3.pl, false);
             bmat plain_texts_2_to_0;
             plain_texts_2_to_0.set_size(CFL, NoLs - 3, false);
             
             ivec plain_texts_decim;
             plain_texts_decim.set_size(CFL, false);
-            mlc_env.encoder_three_levels(&Rxi_bin, &info_l1, &info_l2, &info_l3, &plain_texts_2_to_0, plain_texts_decim, &enc_data_1, &enc_data_2, &enc_data_3);
+            // mlc_env.encoder_three_levels(&Rxi_bin, &info_l1, &info_l2, &info_l3, &plain_texts_2_to_0, plain_texts_decim, &enc_data_1, &enc_data_2, &enc_data_3);
+            mlc_env.encoder_three_levels(&Rxi_bin, &plain_texts_2_to_0, plain_texts_decim, &enc_data_1, &enc_data_2, &enc_data_3);
 
 
             write2D_to_dataset_row_j(dataset_S0, fspace_S0, "bool", nrow_synd0, ifc, enc_data_1);

@@ -9,7 +9,7 @@
 //     NoLs = NoLs_val;
 // };
 
-void MLCMSD::set_num_level_in_use(int NoLiU_val)
+void MLCMSD::set_NoLiU(int NoLiU_val)
 {
     /*
         Set the number of levels used encoder for MLC-MSD
@@ -17,7 +17,7 @@ void MLCMSD::set_num_level_in_use(int NoLiU_val)
     NoLiU = NoLiU_val;
 };
 
-void MLCMSD::set_common_frame_length(int CFL_val)
+void MLCMSD::set_CFL(int CFL_val)
 {
     /*
         Set the Common Frame Length (CFL) for all the codes.
@@ -28,6 +28,14 @@ void MLCMSD::set_common_frame_length(int CFL_val)
 
 void MLCMSD::set_Rate(double Rate_val, int level_no)
 {
+    /*
+        Set the cose rate and check if the parity file exists in the folder
+    */
+
+    stringstream streamR;
+    streamR << fixed << setprecision(2) << Rate_val;
+    string code_name = "H_"+to_str(CFL)+"_"+streamR.str();
+
     if (level_no > 3 || level_no < 1)
     {
         it_error("Level_no can takes values in {1, 2, 3}");
@@ -41,20 +49,327 @@ void MLCMSD::set_Rate(double Rate_val, int level_no)
 
     case 1:
         R1 = Rate_val;
+        if (exists_test(code_name, ".it"))
+        {
+            set_ldpc(1, Hbank_path+code_name+".it");
+        } 
+        else if (exists_test(code_name, ".peg"))
+        {
+            set_ldpc(1, Hbank_path+code_name+".peg");
+        } 
+        else
+        {
+            it_error("The parity does not exists for level 1");
+        }
+        
         break;
 
     case 2:
         R2 = Rate_val;
+        if (exists_test(code_name, ".it"))
+        {
+            set_ldpc(2, Hbank_path+code_name+".it");
+        } 
+        else if (exists_test(code_name, ".peg"))
+        {
+            set_ldpc(2, Hbank_path+code_name+".peg");
+        } 
+        else
+        {
+            it_error("The parity does not exists for level 2");
+        }
         break;
 
     case 3:
         R3 = Rate_val;
+        if (exists_test(code_name, ".it"))
+        {
+            set_ldpc(3, Hbank_path+code_name+".it");
+        } 
+        else if (exists_test(code_name, ".peg"))
+        {
+            set_ldpc(3, Hbank_path+code_name+".peg");
+        } 
+        else
+        {
+            it_error("The parity does not exists for level 3");
+        }
         break;
 
     default:
         break;
     }
 };
+
+void MLCMSD::set_ldpc(int level_no, string ldpc_path)
+{
+    if (level_no > 3 || level_no < 1)
+    {
+        it_error("Level_no can takes values in {1, 2, 3}");
+    }
+
+    switch (level_no)
+    {
+    case 0:
+        it_error("level index starts from 1.");
+        break;
+
+    case 1:
+        C1 = fill_ldpc(ldpc_path);
+        break;
+
+    case 2:
+        C2 = fill_ldpc(ldpc_path);
+        break;
+
+    case 3:
+        C3 = fill_ldpc(ldpc_path);
+        break;
+
+    default:
+        break;
+    }
+};
+
+bool MLCMSD::exists_test (const string& name, string type_h)
+{
+    if (FILE *file = fopen((Hbank_path+name+type_h).c_str(), "r")) {
+        fclose(file);
+        return true;
+    } else {
+        return false;
+    }   
+}
+
+void MLCMSD::load_env(string filetxt)
+{
+    /*
+    This method load a txt file.
+    It contains:
+    CFL, NoLs, NoLiU: 
+    R1, R2, R3,
+  */
+    hsize_t CFL, NoLs, NoLiU;
+    double R1 = 1.0, R2 = 1.0, R3 = 1.0;
+
+    string line, elements, temp_val; // The strings required to read the file.peg
+    int row = 0;                     // counter to fill the base_matrix
+    ifstream _file(filetxt);
+    if (!_file.is_open())
+    {
+        cerr << "File can not be find or opened";
+        exit(1);
+    }
+
+    /*
+        Read the txt file and extract the information
+    */
+    for (string line; getline(_file, line);)
+    { // read line by line and process the .txt file
+        // some variables to define type of the lines
+        size_t found_command = line.find("/*");   // found the command lines
+        size_t found_command_2 = line.find("//"); // found the command lines
+        size_t found_two_space = line.find("  ");
+
+        if (found_command != string::npos)
+            continue; // skip this line
+        if (found_command_2 != string::npos)
+            continue;     // skip this line( ignore if the line is command )
+        if (line.empty()) // skip this line (ignore if the line is empty)
+            continue;
+        if (found_two_space == 0)
+            continue; // redundant info is here
+        else
+        {
+            istringstream streamL(line);
+            switch (row)
+            {
+            case 0:
+                for (int i = 0; streamL >> elements; i++)
+                {
+                    //	  cout << elements << endl; // This is to see how the for loop works ;)
+                    if (i == 0)
+                    {
+                        CFL = atoi(elements.c_str()); //  // cout << *ROW << endl;
+                    }
+                    else if (i == 1)
+                    {
+                        NoLs = atoi(elements.c_str());
+                    }
+                    else
+                    {
+                        NoLiU = atoi(elements.c_str());
+                    };
+                }; // end for
+                row++;
+                break;
+
+            case 1:
+            for (int i = 0; streamL >> elements; i++)
+                {
+                    //	  cout << elements << endl; // This is to see how the for loop works ;)
+                    if (i == 0)
+                    {
+                        R1 = atof(elements.c_str()); //  // cout << *ROW << endl;
+                    }
+                    else if (i == 1)
+                    {
+                        R2 = atof(elements.c_str());
+                    }
+                    else
+                    {
+                        R3 = atof(elements.c_str());
+                    };
+                }; // end for
+                break;
+
+            default:
+                break;
+            }
+
+        } // end else
+    }     // end of lines
+
+    /* 
+        Now update the structure 
+    */
+    set_NoLiU(NoLiU);
+    set_CFL(CFL);
+    
+
+    switch (NoLiU)
+    {
+    case 1:
+        set_Rate(R1, 1);
+        break;
+
+    case 2:
+        set_Rate(R1, 1);
+        set_Rate(R2, 2);
+        break;
+
+    case 3:
+        set_Rate(R1, 1);
+        set_Rate(R2, 2);
+        set_Rate(R3, 3);
+        break;
+
+    default:
+        break;
+    }
+};
+
+void MLCMSD::check_env()
+{
+    /* this will check the structure of the environment.*/
+
+    if (NoLiU == 1)
+    {
+        if (this->get_ldpc(1).get_nvar() == CFL)
+        {
+            printf("\t # The MSB level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(1).get_rate());
+        }
+        else
+        {
+            it_error("The frame lengths is not equal to codeword length");
+        }
+        
+    }
+    else if (NoLiU == 2)
+    {
+        if ((this->get_ldpc(1).get_nvar() == this->get_ldpc(2).get_nvar()) && ((this->get_ldpc(1).get_nvar() == CFL)))
+        {
+            printf("\t # The 1st level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(1).get_rate());
+            printf("\t # The 2nd level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(2).get_rate());
+        }
+        else
+        {
+            it_error("The frame lengths are not equal");
+        }
+    }
+    else
+    {
+        if ((this->get_ldpc(1).get_nvar() == this->get_ldpc(2).get_nvar()) && (this->get_ldpc(3).get_nvar() == this->get_ldpc(1).get_nvar()) && (this->get_ldpc(3).get_nvar() == CFL))
+        {
+            printf("\t # The 1st level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(1).get_rate());
+            printf("\t # The 2nd level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(2).get_rate());
+            printf("\t # The 3rd level with ldpc code of length %lld and rate %4.2f\n", CFL, this->get_ldpc(3).get_rate());
+            
+        }
+        else
+        {
+            it_error("The frame lengths are not equal");
+        }
+    }
+
+
+};
+
+
+double MLCMSD::get_Rate(int level_no)
+{
+    if (level_no > 3 || level_no < 1)
+    {
+        it_error("Level_no can takes values in {1, 2, 3}");
+        return -1.0;
+    }
+
+    switch (level_no)
+    {
+    case 0:
+        it_error("level index starts from 1.");
+        break;
+
+    case 1:
+        return R1;
+        break;
+
+    case 2:
+        return R2;
+        break;
+
+    case 3:
+        return R3;
+        break;
+
+    default:
+        break;
+    }
+    return -1.0;
+};
+
+LDPC_Code MLCMSD::get_ldpc(int level_no)
+{
+    if (level_no > 3 || level_no < 1)
+    {
+        it_error("Level_no can takes values in {1, 2, 3}");
+        return C1;
+    }
+
+    switch (level_no)
+    {
+    case 0:
+        it_error("level index starts from 1.");
+        break;
+
+    case 1:
+        return C1;
+        break;
+
+    case 2:
+        return C2;
+        break;
+
+    case 3:
+        return C3;
+        break;
+
+    default:
+        break;
+    }
+    return C1;
+};
+
 
 void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3)
 {
@@ -140,9 +455,9 @@ void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLi
     }     // end of lines
 
     /* Now update the structure into the c++*/
-    set_num_level_in_use(NoLiU);
+    set_NoLiU(NoLiU);
     // set_total_num_levels(NoLs);
-    set_common_frame_length(CFL);
+    set_CFL(CFL);
     
 
     switch (NoLiU)
@@ -395,7 +710,7 @@ void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *in
 
     if (lniu == 1)
     {
-        this->set_common_frame_length(nvar1);
+        this->set_CFL(nvar1);
     }
     else if (lniu == 2)
     {
@@ -455,6 +770,31 @@ void MLCMSD::display_level(LEVEL_INFO *info_level, bool short_info)
     }
 }
 
+
+void MLCMSD::display_level(int level_no, bool short_info)
+{
+    if (short_info)
+    {
+        printf("# * Code info: \n");
+        printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n# \t ** %8s\t= %8d\n",
+               "Info. bits (K)", this->get_ldpc(level_no).get_ninfo(),
+               "Codeword size (N)", this->get_ldpc(level_no).get_nvar(),
+               "Code Rate (R)", this->get_ldpc(level_no).get_rate(),
+               "level number", level_no);
+    }
+    else
+    {
+        printf("# \e[1m Parameters: \e[0m \n");
+        printf("# * Code info: \n");
+        printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n",
+               "Info. bits (K)", this->get_ldpc(level_no).get_ninfo(),
+               "Codeword size (N)", this->get_ldpc(level_no).get_nvar(),
+               "Code Rate (R)", this->get_ldpc(level_no).get_rate());
+    }
+}
+
+
+
 void MLCMSD::display_table_title()
 {
     printf("\e[1m");
@@ -488,6 +828,23 @@ void MLCMSD::encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level
     
 }
 
+void MLCMSD::encoder_one_level(const bmat &qxB_bin, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard)
+{
+    bvec bin_xB_5 = qxB_bin.get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
+    if (this->get_ldpc(1).get_ncheck() > 0)
+    {
+        QLLRvec synd_llr_xB_5 = this->get_ldpc(1).soft_syndrome_check(sign_xB_5);
+        enc_data_hard = synd_llr_xB_5 > 0;
+    }
+    plain_texts = qxB_bin.get(0, CFL - 1, 1, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts.get_row(i)));
+    }    
+    
+}
+
 // ==================== Enc/Dec for Two levels
 void MLCMSD::encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2)
 {
@@ -504,6 +861,32 @@ void MLCMSD::encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_leve
     if (info_level2.pl > 0)
     {
         QLLRvec synd_llr_xB_4 = info_level2.my_ldpc->soft_syndrome_check(sign_xB_4);
+        enc_data_hard_2 = synd_llr_xB_4 > 0;
+    }
+
+    plain_texts_two_levels = qxB_bin.get(0, CFL - 1, 2, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts_two_levels.get_row(i)));
+    }
+}
+
+
+void MLCMSD::encoder_two_levels(const bmat &qxB_bin, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2)
+{
+    bvec bin_xB_5 = qxB_bin.get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+    bvec bin_xB_4 = qxB_bin.get_col(1);
+    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
+    ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
+
+    if (this->get_ldpc(1).get_ncheck() > 0)
+    {
+        QLLRvec synd_llr_xB_5 = this->get_ldpc(1).soft_syndrome_check(sign_xB_5);
+        enc_data_hard_1 = synd_llr_xB_5 > 0;
+    }
+    if (this->get_ldpc(2).get_ncheck() > 0)
+    {
+        QLLRvec synd_llr_xB_4 = this->get_ldpc(2).soft_syndrome_check(sign_xB_4);
         enc_data_hard_2 = synd_llr_xB_4 > 0;
     }
 
@@ -538,6 +921,38 @@ void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_le
     if (info_level3->pl > 0)
     {
         QLLRvec synd_llr_xB_3 = info_level3->my_ldpc->soft_syndrome_check(sign_xB_3);
+        *enc_data_hard_3 = synd_llr_xB_3 > 0;
+    }
+    *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
+    for (size_t i = 0; i < CFL; i++)
+    {
+        plain_texts_decim.set(i, bin2dec(plain_texts_LSBs->get_row(i)));
+    }
+}
+
+
+void MLCMSD::encoder_three_levels(const bmat *qxB_bin, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
+{
+    bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+    bvec bin_xB_4 = qxB_bin->get_col(1);
+    bvec bin_xB_3 = qxB_bin->get_col(2);
+    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
+    ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
+    ivec sign_xB_3 = 2 * to_ivec(bin_xB_3) - 1;
+    if (this->get_ldpc(1).get_ncheck()  > 0)
+    {
+        QLLRvec synd_llr_xB_5 = this->get_ldpc(1).soft_syndrome_check(sign_xB_5);
+        *enc_data_hard_1 = synd_llr_xB_5 > 0;
+    }
+    if (this->get_ldpc(2).get_ncheck()  > 0)
+    {
+        QLLRvec synd_llr_xB_4 = this->get_ldpc(2).soft_syndrome_check(sign_xB_4);
+        *enc_data_hard_2 = synd_llr_xB_4 > 0;
+    }
+
+    if (this->get_ldpc(3).get_ncheck()  > 0)
+    {
+        QLLRvec synd_llr_xB_3 = this->get_ldpc(3).soft_syndrome_check(sign_xB_3);
         *enc_data_hard_3 = synd_llr_xB_3 > 0;
     }
     *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
