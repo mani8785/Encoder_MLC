@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     /*
         Construct MLC environment
     */
-    MLCMSD mlc_env;
+    MLCMSD mlc_env{}; // This will construct default environment for MLC-MSD    
     
     LDPC_Code ldpc1;                        // empty constructor
     LDPC_Code ldpc2;                        // empty constructor
@@ -45,13 +45,12 @@ int main(int argc, char **argv)
 
     hsize_t NoLs;                               /* Number of levels */
     hsize_t NoLiU;                              /* Number of levels in use */
-    bvec EncPattrn = "1 1 1 0 0 0"; 
     hsize_t CFL;                                /* Common frame length */
 
     double R1, R2, R3;                      /* Code rates values it might not be used*/
     mlc_env.load_env("struct.txt", CFL, NoLs, NoLiU, R1, R2, R3);
 
-    switch (mlc_env.get_num_level_in_use())
+    switch (mlc_env.get_NoLiU())
     {
     case 1:
         /* Load the encoder for MSB level*/
@@ -206,7 +205,7 @@ int main(int argc, char **argv)
     // hsize_t nrow_plaintext = (hsize_t) (NoLs-1) * (hsize_t) CFL;
     hsize_t Dims_ds_plaintext[2] = {TFN, CFL};
     
-    switch (mlc_env.get_num_level_in_use())
+    switch (mlc_env.get_NoLiU())
     {
     case 1:
         cout << "# * number of levels in use are: \t" << 1 << endl;
@@ -332,7 +331,7 @@ int main(int argc, char **argv)
         bin_b_level_2 = Rxi_bin.get_col(1);
         bin_b_level_3 = Rxi_bin.get_col(2);
 
-        if (mlc_env.get_num_level_in_use() == 1)
+        if (mlc_env.get_NoLiU() == 1)
         {
             // ----------------------- MLC-MSD one level
             bvec encded_data;
@@ -348,7 +347,7 @@ int main(int argc, char **argv)
 
             // mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-1), ifc, plain_texts);
         }
-        else if (mlc_env.get_num_level_in_use() == 2)
+        else if (mlc_env.get_NoLiU() == 2)
         {
             // ----------------------- MLC-MSD two levels
             bvec enc_data_1, enc_data_2;
@@ -367,7 +366,7 @@ int main(int argc, char **argv)
             write2D_to_dataset_row_j(dataset_plaintext, fspace_plaintext, "int8", CFL, ifc, plain_texts_decim);
             // mlc_env.write_to_2D_dataset_ith_index_mapping(dataset_plaintext, fspace_plaintext, "boolean", (hsize_t) CFL, (hsize_t) (NoLs-2), ifc, plain_texts_new);
         }
-        else if (mlc_env.get_num_level_in_use() == 3)
+        else if (mlc_env.get_NoLiU() == 3)
         {
             // ----------------------- MLC-MSD three levels
             bvec enc_data_1, enc_data_2, enc_data_3;

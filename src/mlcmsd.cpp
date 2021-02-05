@@ -1,13 +1,13 @@
 #include <sstream>
 #include "mlcmsd.h"
 
-void MLCMSD::set_total_num_levels(int NoLs_val)
-{
-    /*
-        Set the total number of levels
-    */
-    NoLs = NoLs_val;
-};
+// void MLCMSD::set_total_num_levels(int NoLs_val)
+// {
+//     /*
+//         Set the total number of levels
+//     */
+//     NoLs = NoLs_val;
+// };
 
 void MLCMSD::set_num_level_in_use(int NoLiU_val)
 {
@@ -24,35 +24,6 @@ void MLCMSD::set_common_frame_length(int CFL_val)
         It is actually the read size of our buffer
     */
     CFL = CFL_val;
-};
-
-void MLCMSD::set_enc_pattern(bvec Enc_pattern_val)
-{
-    /*
-        Set the encoding pattern.
-        111000
-    */
-    int total_num_levels = Enc_pattern_val.length();
-    if (NoLs != total_num_levels)
-    {
-        printf("Error Hint: The given pattern length is %d but should be %d", total_num_levels, NoLs);
-        it_error("The pattern length does not match");
-    }
-
-    ivec Enc_pattern_val_int = to_ivec(Enc_pattern_val);
-    if (sum(Enc_pattern_val_int) != NoLiU)
-    {
-        printf("Error Hint: Number of levels in use are %d but should be %d", sum(Enc_pattern_val_int), NoLiU);
-        it_error("The number of levels in use does not match");
-    }
-    int pattern_dec = bin2dec(Enc_pattern_val);
-    if (pattern_dec != 32 && pattern_dec != 48 && pattern_dec != 56)
-    {
-        printf("Error Hint: It is not a valid pattern. Valid patterns are (111000, 110000, 100000) \n");
-        it_error("Wrong valid pattern");
-    }
-
-    EncPattern = Enc_pattern_val;
 };
 
 void MLCMSD::set_Rate(double Rate_val, int level_no)
@@ -170,7 +141,7 @@ void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLi
 
     /* Now update the structure into the c++*/
     set_num_level_in_use(NoLiU);
-    set_total_num_levels(NoLs);
+    // set_total_num_levels(NoLs);
     set_common_frame_length(CFL);
     
 
@@ -178,20 +149,17 @@ void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLi
     {
     case 1:
         set_Rate(R1, 1);
-        set_enc_pattern("1 0 0 0 0 0");
         break;
 
     case 2:
         set_Rate(R1, 1);
         set_Rate(R2, 2);
-        set_enc_pattern("1 1 0 0 0 0");
         break;
 
     case 3:
         set_Rate(R1, 1);
         set_Rate(R2, 2);
         set_Rate(R3, 3);
-        set_enc_pattern("1 1 1 0 0 0");
         break;
 
     default:
@@ -255,9 +223,9 @@ void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int l
     if (found_type != std::string::npos)
     {
         info_level->my_ldpc = ldpc_in;
-        info_level->fl = this->get_common_frame_length();
+        info_level->fl = this->get_CFL();
         info_level->pl = 0.0;
-        info_level->kl = this->get_common_frame_length();
+        info_level->kl = this->get_CFL();
         info_level->peg_file_name = h_name;
         info_level->level_no = level_no;
         info_level->level_code_rate = 1.0;
@@ -422,8 +390,8 @@ void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *in
     int nvar2 = info_level2->fl;
     int nvar3 = info_level3->fl;
 
-    int cfl = this->get_common_frame_length();
-    int lniu = this->get_num_level_in_use();
+    int cfl = this->get_CFL();
+    int lniu = this->get_NoLiU();
 
     if (lniu == 1)
     {

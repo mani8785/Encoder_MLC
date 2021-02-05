@@ -32,19 +32,23 @@ struct LEVEL_INFO
 class MLCMSD
 {
 private:
-    int NoLs = 6;               // num_levels = 6;
-    int NoLiU = 3;              // number_of_levels_in_use = 3;
-    int CFL = 1000000;             // common_frame_length;
-    double R1 = 1.0;            // code rate R1
-    double R2 = 1.0;            // code rate R2
-    double R3 = 1.0;            // code rate R3
-    bvec EncPattern = "1 1 1 0 0 0"; // if 0 then no decoding and just plaintext are sent
+    const hsize_t NoLs;                // num_levels = 6;
+    hsize_t NoLiU;               // number_of_levels_in_use = 3;
+    hsize_t CFL;           // common_frame_length;
+    double R1;                 // code rate R1
+    double R2;                 // code rate R2
+    double R3;                 // code rate R3
 
 public:
-    MLCMSD()
+    // MLCMSD(): NoLs{6}
+    // {
+    //     // constructor
+    // };
+
+    MLCMSD(const hsize_t NoLs=6, hsize_t NoLiU_val = 3, hsize_t CFL_val = 1000000, double R1_val = 1.0, double R2_val = 1.0, double R3_val = 1.0)
+        : NoLs{6}, NoLiU{NoLiU_val}, CFL{CFL_val}, R1{R1_val}, R2{R2_val}, R3{R3_val}
     {
-        // constructor
-    }
+    };
 
     ~MLCMSD()
     {
@@ -54,10 +58,9 @@ public:
         MLC environment
         Set methods
     */
-    void set_total_num_levels(int NoLs_val);
+    // void set_total_num_levels(int NoLs_val);
     void set_num_level_in_use(int NoLiU_val);
     void set_common_frame_length(int CFL_val);
-    void set_enc_pattern(bvec Enc_pattern_val);
     void set_Rate(double Rate_val, int level_no);
 
     /*
@@ -65,21 +68,20 @@ public:
         Get methods
     */
 
-    int get_num_level_in_use() { return NoLiU; };
-
-    int get_common_frame_length() { return CFL; };
+    hsize_t get_NoLiU() { return NoLiU; };
+    hsize_t get_CFL() { return CFL; };
+    
 
     /*
         MLC environment
         Check methods
     */
 
-   void load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3);
+    void load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3);
 
     void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
 
     void initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
-
 
     void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
