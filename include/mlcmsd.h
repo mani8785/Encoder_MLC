@@ -99,6 +99,8 @@ public:
         Check methods
     */
     void check_env();
+    void Rare_data_prepration(string path_to_inputH5, bool multiple_group_flg, hsize_t &TNoEs_val, hsize_t &TFN_val);
+    void encoding_main(string path_to_inputH5, string path_to_outptH5, hsize_t TNoEs_val, hsize_t TFN_val);
 
     /*
         Methods related to the loading of LDPC codes
