@@ -962,6 +962,19 @@ void MLCMSD::display_table_title()
 }
 
 
+void MLCMSD::display_elapsed_time(double end_time, double start_time, hsize_t TNoEs_val)
+{
+    double elapse_time = end_time -start_time;
+    int hh = (int) elapse_time/3600;
+    int mm = (int) (elapse_time-hh*3600)/60;
+    int ss = (int) elapse_time - hh*3600 - 60*mm;
+    printf("\n");
+    printf("# \t ** %-16s\t : %-3d hh:%3d mm:%3d ss\n", " Elapsed time ", hh, mm, ss);
+    printf("# \t ** %-16s\t : %-8.4f \n", " Throughput (Kbps)", TNoEs_val/elapse_time/1024*8);
+    printf("\n# END of Simulation\n");
+    printf("\e[0m");
+};
+
 
 
 void MLCMSD::encoder_one_level(const bmat &qxB_bin, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard)

@@ -3,10 +3,17 @@
 
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+
 #include <itpp/itcomm.h>
 #include <itpp/stat/misc_stat.h>
 #include <itpp/itbase.h>
-#include <iomanip>
+#include <itpp/srccode/vq.h>
+#include <itpp/comm/ldpc.h>
+
+
+#include <cstdlib>
+
 #include "RogWH5.h"
 
 #include "H5Cpp.h"
@@ -138,6 +145,7 @@ public:
     void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
     void display_level(LEVEL_INFO *info_level, bool short_info);
+    void display_elapsed_time(double end_time, double start_time, hsize_t TNoEs_val);
 
     void encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard);
     void encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2);
