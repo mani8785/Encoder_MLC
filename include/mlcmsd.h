@@ -16,27 +16,27 @@
 
 #include "RogWH5.h"
 
-#include "H5Cpp.h"
+// #include "H5Cpp.h"
 
 using namespace std;
 using namespace itpp;
 using namespace H5;
 
-struct LEVEL_INFO
-{
-    /* 
-     fl : frame length, 
-     pl : parity length,  
-     kl : information length, 
-     idl: input_data_length,  
-    */
-    int fl, pl, kl;
-    LDPC_Code *my_ldpc;
-    vec softbits;
-    string peg_file_name;
-    int level_no;
-    double level_code_rate;
-};
+// struct LEVEL_INFO
+// {
+//     /* 
+//      fl : frame length, 
+//      pl : parity length,  
+//      kl : information length, 
+//      idl: input_data_length,  
+//     */
+//     int fl, pl, kl;
+//     LDPC_Code *my_ldpc;
+//     vec softbits;
+//     string peg_file_name;
+//     int level_no;
+//     double level_code_rate;
+// };
 
 class MLCMSD
 {
@@ -120,6 +120,7 @@ public:
     */
     void display_level(int level_no, bool short_info);
     void display_table_title();
+    void display_elapsed_time(double end_time, double start_time, hsize_t TNoEs_val);
 
     /*
         Encoding methods 
@@ -140,16 +141,15 @@ public:
 
     void load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLiU, double &R1, double &R2, double &R3);
 
-    void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
-    void initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
-    void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
+    // void check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3);
+    // void initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
+    // void update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name);
 
-    void display_level(LEVEL_INFO *info_level, bool short_info);
-    void display_elapsed_time(double end_time, double start_time, hsize_t TNoEs_val);
-
-    void encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard);
-    void encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2);
-    void encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3);
+    // void display_level(LEVEL_INFO *info_level, bool short_info);
+    
+    // void encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard);
+    // void encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2);
+    // void encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3);
 
 };
 
