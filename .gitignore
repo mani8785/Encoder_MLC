@@ -1,0 +1,10 @@
+# ignore all the h5 files
+*.h5
+
+# ignore all elements in build
+build/*
+
+
+# ignore exe file
+test/*
+!test/struct.txt
