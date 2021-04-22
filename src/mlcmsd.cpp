@@ -581,7 +581,7 @@ void MLCMSD::encoding_main(string path_to_inputH5, string path_to_outptH5, hsize
         Rxi+=32;
    
         // ------------------------ Digitization
-        cout << endl;
+        // cout << endl;
         for (int cc = 0; cc < CFL; cc++)
         {   
             Rxi_bin.set_row( cc, dec2bin(NoLs, Rxi(cc)) );
@@ -961,7 +961,6 @@ void MLCMSD::display_table_title()
     printf("\e[0m");
 }
 
-
 void MLCMSD::display_elapsed_time(double end_time, double start_time, hsize_t TNoEs_val)
 {
     double elapse_time = end_time -start_time;
@@ -1171,191 +1170,191 @@ void MLCMSD::load_env(string filetxt, hsize_t &CFL, hsize_t &NoLs, hsize_t &NoLi
     }
 };
 
-void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
-{
-    size_t found_type = h_name.find("skip");
-    if (found_type != std::string::npos)
-    {
-        info_level->my_ldpc = ldpc_in;
-        info_level->fl = 0.0;
-        info_level->pl = 0.0;
-        info_level->kl = 0.0;
-        info_level->peg_file_name = h_name;
-        info_level->level_no = level_no;
-        info_level->level_code_rate = 1.0;
-    }
-    else
-    {
-        info_level->my_ldpc = ldpc_in;
-        info_level->fl = ldpc_in->get_nvar();
-        info_level->pl = ldpc_in->get_ncheck();
-        info_level->kl = info_level->fl - info_level->pl;
-        info_level->peg_file_name = h_name;
-        info_level->level_no = level_no;
-        info_level->level_code_rate = ldpc_in->get_rate();
-    }
-}
+// void MLCMSD::initialize_struct(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
+// {
+//     size_t found_type = h_name.find("skip");
+//     if (found_type != std::string::npos)
+//     {
+//         info_level->my_ldpc = ldpc_in;
+//         info_level->fl = 0.0;
+//         info_level->pl = 0.0;
+//         info_level->kl = 0.0;
+//         info_level->peg_file_name = h_name;
+//         info_level->level_no = level_no;
+//         info_level->level_code_rate = 1.0;
+//     }
+//     else
+//     {
+//         info_level->my_ldpc = ldpc_in;
+//         info_level->fl = ldpc_in->get_nvar();
+//         info_level->pl = ldpc_in->get_ncheck();
+//         info_level->kl = info_level->fl - info_level->pl;
+//         info_level->peg_file_name = h_name;
+//         info_level->level_no = level_no;
+//         info_level->level_code_rate = ldpc_in->get_rate();
+//     }
+// }
 
-void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
-{
-    size_t found_type = h_name.find("skip");
-    if (found_type != std::string::npos)
-    {
-        info_level->my_ldpc = ldpc_in;
-        info_level->fl = this->get_CFL();
-        info_level->pl = 0.0;
-        info_level->kl = this->get_CFL();
-        info_level->peg_file_name = h_name;
-        info_level->level_no = level_no;
-        info_level->level_code_rate = 1.0;
-    }
-};
+// void MLCMSD::update_level_info(LEVEL_INFO *info_level, LDPC_Code *ldpc_in, int level_no, string h_name)
+// {
+//     size_t found_type = h_name.find("skip");
+//     if (found_type != std::string::npos)
+//     {
+//         info_level->my_ldpc = ldpc_in;
+//         info_level->fl = this->get_CFL();
+//         info_level->pl = 0.0;
+//         info_level->kl = this->get_CFL();
+//         info_level->peg_file_name = h_name;
+//         info_level->level_no = level_no;
+//         info_level->level_code_rate = 1.0;
+//     }
+// };
 
-void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3)
-{
-    int nvar1 = info_level1->fl;
-    int nvar2 = info_level2->fl;
-    int nvar3 = info_level3->fl;
+// void MLCMSD::check_structure(const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3)
+// {
+//     int nvar1 = info_level1->fl;
+//     int nvar2 = info_level2->fl;
+//     int nvar3 = info_level3->fl;
 
-    int cfl = this->get_CFL();
-    int lniu = this->get_NoLiU();
+//     int cfl = this->get_CFL();
+//     int lniu = this->get_NoLiU();
 
-    if (lniu == 1)
-    {
-        this->set_CFL(nvar1);
-    }
-    else if (lniu == 2)
-    {
-        if ((nvar1 == nvar2) && ((nvar2 == cfl)))
-        {
-            cout << "Frame length are equal for all the levels" << endl;
-        }
-        else
-        {
-            it_error("The frame lengths are not equal");
-        }
-    }
-    else
-    {
-        if ((nvar1 == nvar2) && (nvar3 == nvar1) && (nvar3 == cfl))
-        {
-            cout << "Frame length are equal for all the levels" << endl;
-        }
-        else
-        {
-            it_error("The frame lengths are not equal");
-        }
-    }
-}
+//     if (lniu == 1)
+//     {
+//         this->set_CFL(nvar1);
+//     }
+//     else if (lniu == 2)
+//     {
+//         if ((nvar1 == nvar2) && ((nvar2 == cfl)))
+//         {
+//             cout << "Frame length are equal for all the levels" << endl;
+//         }
+//         else
+//         {
+//             it_error("The frame lengths are not equal");
+//         }
+//     }
+//     else
+//     {
+//         if ((nvar1 == nvar2) && (nvar3 == nvar1) && (nvar3 == cfl))
+//         {
+//             cout << "Frame length are equal for all the levels" << endl;
+//         }
+//         else
+//         {
+//             it_error("The frame lengths are not equal");
+//         }
+//     }
+// }
 
-void MLCMSD::display_level(LEVEL_INFO *info_level, bool short_info)
-{
-    string file_name = info_level->peg_file_name;
-    if (short_info)
-    {
-        printf("# * Code info: \n");
-        printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n# \t ** %8s\t= %8d\n",
-               "Info. bits (K)", info_level->kl,
-               "Codeword size (N)", info_level->fl,
-               "Code Rate (R)", info_level->level_code_rate,
-               "level number", info_level->level_no);
-    }
-    else
-    {
-        printf("# \e[1m Parameters: \e[0m \n");
-        printf("# * Code info: \n");
-        printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n",
-               "Info. bits (K)", info_level->kl,
-               "Codeword size (N)", info_level->fl,
-               "Code Rate (R)", info_level->level_code_rate);
-        printf("# * Decoder info: \n");
-        printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %-16s\n# \t ** %8s\t= %8d\n",
-               "Decoding method ", "BP-LLR-SPA",
-               "H matrix info", file_name.c_str(),
-               "Maximum iteration", info_level->my_ldpc->get_nrof_iterations());
+// void MLCMSD::display_level(LEVEL_INFO *info_level, bool short_info)
+// {
+//     string file_name = info_level->peg_file_name;
+//     if (short_info)
+//     {
+//         printf("# * Code info: \n");
+//         printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n# \t ** %8s\t= %8d\n",
+//                "Info. bits (K)", info_level->kl,
+//                "Codeword size (N)", info_level->fl,
+//                "Code Rate (R)", info_level->level_code_rate,
+//                "level number", info_level->level_no);
+//     }
+//     else
+//     {
+//         printf("# \e[1m Parameters: \e[0m \n");
+//         printf("# * Code info: \n");
+//         printf("# \t ** %8s\t= %8d\n# \t ** %8s\t= %8d\n# \t ** %8s\t= %8.3f\n",
+//                "Info. bits (K)", info_level->kl,
+//                "Codeword size (N)", info_level->fl,
+//                "Code Rate (R)", info_level->level_code_rate);
+//         printf("# * Decoder info: \n");
+//         printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %-16s\n# \t ** %8s\t= %8d\n",
+//                "Decoding method ", "BP-LLR-SPA",
+//                "H matrix info", file_name.c_str(),
+//                "Maximum iteration", info_level->my_ldpc->get_nrof_iterations());
 
-        printf("# * Channel info: \n");
-        printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %8s\n# \t ** %8s\t= %8s\n",
-               "Channel Type ", "BI-AWGN",
-               "Noise Type   ", "Eb/N0 (dB)",
-               "Estimated Noise  ", "Unknown");
-    }
-}
+//         printf("# * Channel info: \n");
+//         printf("# \t ** %8s\t= %8s\n# \t ** %8s\t= %8s\n# \t ** %8s\t= %8s\n",
+//                "Channel Type ", "BI-AWGN",
+//                "Noise Type   ", "Eb/N0 (dB)",
+//                "Estimated Noise  ", "Unknown");
+//     }
+// }
 
-// ==================== Enc/Dec for one level
-void MLCMSD::encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard)
-{
-    bvec bin_xB_5 = qxB_bin.get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
-    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
-    if (info_level.pl > 0)
-    {
-        QLLRvec synd_llr_xB_5 = info_level.my_ldpc->soft_syndrome_check(sign_xB_5);
-        enc_data_hard = synd_llr_xB_5 > 0;
-    }
-    plain_texts = qxB_bin.get(0, CFL - 1, 1, NoLs - 1);
-    for (size_t i = 0; i < CFL; i++)
-    {
-        plain_texts_decim.set(i, bin2dec(plain_texts.get_row(i)));
-    }
+// // ==================== Enc/Dec for one level
+// void MLCMSD::encoder_one_level(const bmat &qxB_bin, const LEVEL_INFO &info_level, bmat &plain_texts, ivec &plain_texts_decim, bvec &enc_data_hard)
+// {
+//     bvec bin_xB_5 = qxB_bin.get_col(0);        // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+//     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1; // ToDo check if QLLR is required
+//     if (info_level.pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_5 = info_level.my_ldpc->soft_syndrome_check(sign_xB_5);
+//         enc_data_hard = synd_llr_xB_5 > 0;
+//     }
+//     plain_texts = qxB_bin.get(0, CFL - 1, 1, NoLs - 1);
+//     for (size_t i = 0; i < CFL; i++)
+//     {
+//         plain_texts_decim.set(i, bin2dec(plain_texts.get_row(i)));
+//     }
     
     
-}
-// ==================== Enc/Dec for Two levels
-void MLCMSD::encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2)
-{
-    bvec bin_xB_5 = qxB_bin.get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
-    bvec bin_xB_4 = qxB_bin.get_col(1);
-    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
-    ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
+// }
+// // ==================== Enc/Dec for Two levels
+// void MLCMSD::encoder_two_levels(const bmat &qxB_bin, const LEVEL_INFO &info_level1, const LEVEL_INFO &info_level2, bmat &plain_texts_two_levels, ivec &plain_texts_decim, bvec &enc_data_hard_1, bvec &enc_data_hard_2)
+// {
+//     bvec bin_xB_5 = qxB_bin.get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+//     bvec bin_xB_4 = qxB_bin.get_col(1);
+//     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
+//     ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
 
-    if (info_level1.pl > 0)
-    {
-        QLLRvec synd_llr_xB_5 = info_level1.my_ldpc->soft_syndrome_check(sign_xB_5);
-        enc_data_hard_1 = synd_llr_xB_5 > 0;
-    }
-    if (info_level2.pl > 0)
-    {
-        QLLRvec synd_llr_xB_4 = info_level2.my_ldpc->soft_syndrome_check(sign_xB_4);
-        enc_data_hard_2 = synd_llr_xB_4 > 0;
-    }
+//     if (info_level1.pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_5 = info_level1.my_ldpc->soft_syndrome_check(sign_xB_5);
+//         enc_data_hard_1 = synd_llr_xB_5 > 0;
+//     }
+//     if (info_level2.pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_4 = info_level2.my_ldpc->soft_syndrome_check(sign_xB_4);
+//         enc_data_hard_2 = synd_llr_xB_4 > 0;
+//     }
 
-    plain_texts_two_levels = qxB_bin.get(0, CFL - 1, 2, NoLs - 1);
-    for (size_t i = 0; i < CFL; i++)
-    {
-        plain_texts_decim.set(i, bin2dec(plain_texts_two_levels.get_row(i)));
-    }
-}
+//     plain_texts_two_levels = qxB_bin.get(0, CFL - 1, 2, NoLs - 1);
+//     for (size_t i = 0; i < CFL; i++)
+//     {
+//         plain_texts_decim.set(i, bin2dec(plain_texts_two_levels.get_row(i)));
+//     }
+// }
 
-// ==================== Enc/Dec for Three levels
+// // ==================== Enc/Dec for Three levels
 
-void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
-{
-    bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
-    bvec bin_xB_4 = qxB_bin->get_col(1);
-    bvec bin_xB_3 = qxB_bin->get_col(2);
-    ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
-    ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
-    ivec sign_xB_3 = 2 * to_ivec(bin_xB_3) - 1;
-    if (info_level1->pl > 0)
-    {
-        QLLRvec synd_llr_xB_5 = info_level1->my_ldpc->soft_syndrome_check(sign_xB_5);
-        *enc_data_hard_1 = synd_llr_xB_5 > 0;
-    }
-    if (info_level2->pl > 0)
-    {
-        QLLRvec synd_llr_xB_4 = info_level2->my_ldpc->soft_syndrome_check(sign_xB_4);
-        *enc_data_hard_2 = synd_llr_xB_4 > 0;
-    }
+// void MLCMSD::encoder_three_levels(const bmat *qxB_bin, const LEVEL_INFO *info_level1, const LEVEL_INFO *info_level2, const LEVEL_INFO *info_level3, bmat *plain_texts_LSBs, ivec &plain_texts_decim, bvec *enc_data_hard_1, bvec *enc_data_hard_2, bvec *enc_data_hard_3)
+// {
+//     bvec bin_xB_5 = qxB_bin->get_col(0); // bin_a_level_i = x_A > 0; // 0-> -1,   1 -> 1 :  2c-1
+//     bvec bin_xB_4 = qxB_bin->get_col(1);
+//     bvec bin_xB_3 = qxB_bin->get_col(2);
+//     ivec sign_xB_5 = 2 * to_ivec(bin_xB_5) - 1;
+//     ivec sign_xB_4 = 2 * to_ivec(bin_xB_4) - 1;
+//     ivec sign_xB_3 = 2 * to_ivec(bin_xB_3) - 1;
+//     if (info_level1->pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_5 = info_level1->my_ldpc->soft_syndrome_check(sign_xB_5);
+//         *enc_data_hard_1 = synd_llr_xB_5 > 0;
+//     }
+//     if (info_level2->pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_4 = info_level2->my_ldpc->soft_syndrome_check(sign_xB_4);
+//         *enc_data_hard_2 = synd_llr_xB_4 > 0;
+//     }
 
-    if (info_level3->pl > 0)
-    {
-        QLLRvec synd_llr_xB_3 = info_level3->my_ldpc->soft_syndrome_check(sign_xB_3);
-        *enc_data_hard_3 = synd_llr_xB_3 > 0;
-    }
-    *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
-    for (size_t i = 0; i < CFL; i++)
-    {
-        plain_texts_decim.set(i, bin2dec(plain_texts_LSBs->get_row(i)));
-    }
-}
+//     if (info_level3->pl > 0)
+//     {
+//         QLLRvec synd_llr_xB_3 = info_level3->my_ldpc->soft_syndrome_check(sign_xB_3);
+//         *enc_data_hard_3 = synd_llr_xB_3 > 0;
+//     }
+//     *plain_texts_LSBs = qxB_bin->get(0, CFL - 1, 3, NoLs - 1);
+//     for (size_t i = 0; i < CFL; i++)
+//     {
+//         plain_texts_decim.set(i, bin2dec(plain_texts_LSBs->get_row(i)));
+//     }
+// }
 
