@@ -1,0 +1,11 @@
+/* The structure of the MLC-MSD environment */
+/* Looks like this: */
+/* For comment type /*
+/* ========================
+/* CFL, NoLs, NoLiU
+/* R1, R2, R3
+/* ========================
+/* 1000000, 6, 3
+/* 0.90, 0.70, 0.02
+819200, 6, 3
+0.92, 0.70, 0.05
